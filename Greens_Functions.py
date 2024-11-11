@@ -1,4 +1,5 @@
 import numpy as np
+from scipy.linalg import expm
 from scipy.sparse import coo_matrix, bmat
 from scipy.sparse.linalg import eigs, eigsh
 
