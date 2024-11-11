@@ -1,0 +1,30 @@
+'''
+# Function evaluating the Green's function (Z=z', d=thickness)
+def GF(Nstates, Nlat, dZ, d, z, Z, kx, ky, L, w, hbar = 1., eta = 1E-6, C = -0.0068, D1 = 1.3, D2 = 19.6, A1 = 2.2, A2 = 4.1, M = 0.28, B1 = 10, B2 = 56.6):
+
+    # compute the eigenstates
+    lattice, egval, spinors = eigensates(Nlat=Nlat, dZ=dZ, kx=kx, ky=ky, L=L, Neig=Nstates, C=C, D1=D1, D2=D2, A1=A1, A2=A2, M=M, B1=B1, B2=B2)
+    
+    # empty matrix for Green's function
+    G = np.empty([4, 4], dtype='complex')
+
+    # loop over columns (sigma',lambda')
+    for icol in range(4):
+
+        # loop over rows (sigma,lambda)
+        for irow in range(4):
+                
+            G[irow][icol] = np.sum( [spinors[n][z][irow]*np.conj(spinors[n][Z][icol])*1./(w-egval[n]/hbar+1j*eta*np.sign(egval[n])) for n in range(Nstates)] )
+                
+    return G
+
+
+# number of states
+Nstates = 100
+# iteration over states
+N = np.arange(100,901,50)
+# lattice
+Nlat = 250; d = 100.; dZ = d/(Nlat-1)
+
+#gf = np.array([ GF(Nstates=n, Nlat=Nlat, dZ=dZ, d=d, z=100, Z=100, kx=0., ky=0., L=0., w=0.01) for n in N])
+'''
