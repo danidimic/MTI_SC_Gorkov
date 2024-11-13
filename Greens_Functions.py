@@ -29,9 +29,13 @@ lambdaZ = np.array([[1, 0], [0, -1]])
 
 
 # Function defining the Matrix M
-def Mmat(kx, ky, L, w, C = -0.0068, D1 = 1.3, D2 = 19.6, A1 = 2.2, A2 = 4.1, M = 0.28, B1 = 10, B2 = 56.6):
+def Mmat(kx, ky, L, w, C = -0.0068, D1 = 1.3, D2 = 19.6, A1 = 2.2, A2 = 4.1, M = 0.28, B1 = 10, B2 = 56.6, hbar = 1.):
 
+    # abbreviations
     k = np.sqrt(kx**2+ky**2); e0 = C + D2*k**2; m0 = M - B2*k**2
+
+    # denominators
+    a = 1./(B1-D1); b = 1./(B1+D1)
 
     # Zero Matrix
     zero = np.zeros((4,4))
@@ -41,39 +45,41 @@ def Mmat(kx, ky, L, w, C = -0.0068, D1 = 1.3, D2 = 19.6, A1 = 2.2, A2 = 4.1, M =
 
     # Matrix C (Constant)
     Cmat = np.array(
-        [[-(e0+m0+L-1j*w)/(B1-D1), 0, 0, -A2*(kx-1j*ky)/(B1-D1)],
-         [0, -(e0+m0-L-1j*w)/(B1-D1), -A2*(kx+1j*ky)/(B1-D1),0],
-         [0, A2*(kx-1j*ky)/(B1+D1), (e0-m0+L-1j*w)/(B1+D1), 0],
-         [A2*(kx+1j*ky)/(B1+D1), 0, 0, (e0-m0-L-1j*w)/(B1+D1)]])
+        [[-a*(e0+m0+L-hbar*w), 0, 0, -a*A2*(kx-1j*ky)],
+         [0, -a*(e0+m0-L-hbar*w), -a*A2*(kx+1j*ky),0],
+         [0, b*A2*(kx-1j*ky), b*(e0-m0+L-hbar*w), 0],
+         [b*A2*(kx+1j*ky), 0, 0, b*(e0-m0-L-hbar*w)]])
 
     # Matrix D (first derivatives)
     Dmat = np.array(
-        [[0, 0, 1j*A1/(B1-D1), 0],
-         [0, 0, 0, -1j*A1/(B1-D1)],
-         [-1j*A1/(B1+D1), 0, 0, 0],
-         [0, 1j*A1/(B1+D1), 0, 0]])
+        [[0, 0, 1j*a*A1, 0],
+         [0, 0, 0, -1j*a*A1],
+         [-1j*b*A1, 0, 0, 0],
+         [0, 1j*b*A1, 0, 0]])
     
     # Compone the matrix M
     return np.block([[zero, id], [Cmat, Dmat]])
 
 
-# Function computing the exponetial matrix exp(Mz)
-def expMz(z, kx, ky, L, w, C = -0.0068, D1 = 1.3, D2 = 19.6, A1 = 2.2, A2 = 4.1, M = 0.28, B1 = 10, B2 = 56.6):
 
-    return expm( Mmat(kx, ky, L, w, C=C, D1=D1, D2=D2, A1=A1, A2=A2, M=M, B1=B1, B2=B2)*z )
+# Function computing the exponetial matrix exp(Mz)
+def expMz(z, kx, ky, L, w, C = -0.0068, D1 = 1.3, D2 = 19.6, A1 = 2.2, A2 = 4.1, M = 0.28, B1 = 10, B2 = 56.6, hbar = 1.):
+
+    return expm( Mmat(kx, ky, L, w, C=C, D1=D1, D2=D2, A1=A1, A2=A2, M=M, B1=B1, B2=B2, hbar=hbar)*z )
+
 
 
 # Function defining the matrix A (Z=z', d=thickness)
-def Amat(d, Z, kx, ky, L, w, C = -0.0068, D1 = 1.3, D2 = 19.6, A1 = 2.2, A2 = 4.1, M = 0.28, B1 = 10, B2 = 56.6):
+def Amat(d, Z, kx, ky, L, w, C = -0.0068, D1 = 1.3, D2 = 19.6, A1 = 2.2, A2 = 4.1, M = 0.28, B1 = 10, B2 = 56.6, hbar = 1.):
 
     # exponential at z=0
-    eM0 = expMz(0, kx, ky, L, w, C=C, D1=D1, D2=D2, A1=A1, A2=A2, M=M, B1=B1, B2=B2)
+    eM0 = expMz(0, kx, ky, L, w, C=C, D1=D1, D2=D2, A1=A1, A2=A2, M=M, B1=B1, B2=B2, hbar=hbar)
     
     # exponential at z=d
-    eMd = expMz(d, kx, ky, L, w, C=C, D1=D1, D2=D2, A1=A1, A2=A2, M=M, B1=B1, B2=B2)
+    eMd = expMz(d, kx, ky, L, w, C=C, D1=D1, D2=D2, A1=A1, A2=A2, M=M, B1=B1, B2=B2, hbar=hbar)
 
     # exponential at z=d
-    eMZ = expMz(Z, kx, ky, L, w, C=C, D1=D1, D2=D2, A1=A1, A2=A2, M=M, B1=B1, B2=B2)
+    eMZ = expMz(Z, kx, ky, L, w, C=C, D1=D1, D2=D2, A1=A1, A2=A2, M=M, B1=B1, B2=B2, hbar=hbar)
 
     # initialize an empty matrix
     A = np.empty([16, 16], dtype=complex)
@@ -101,8 +107,9 @@ def Amat(d, Z, kx, ky, L, w, C = -0.0068, D1 = 1.3, D2 = 19.6, A1 = 2.2, A2 = 4.
     return A
 
 
+
 # Function defining the non-homogeneous term y
-def Yvec(icol, D1 = 1.3, B1 = 10):
+def Yvec(icol, D1 = 1.3, B1 = 10, hbar = 1.):
 
     # initialize an empty vector
     y = np.zeros([16], dtype=complex)
@@ -112,41 +119,43 @@ def Yvec(icol, D1 = 1.3, B1 = 10):
     
         # column 1,2
         case 1 | 2:
-            y[11+icol] = -1j/(B1-D1)
+            y[11+icol] = hbar/(B1-D1)
             
         # column 3,4
         case 3 | 4:
-            y[11+icol] = -1j/(B1+D1)
+            y[11+icol] = -hbar/(B1+D1)
 
     return(y)
 
 
+
 # Function for solving the system and finding the particular solution
-def psolution(icol, d, Z, kx, ky, L, w, C = -0.0068, D1 = 1.3, D2 = 19.6, A1 = 2.2, A2 = 4.1, M = 0.28, B1 = 10, B2 = 56.6):
+def psolution(icol, d, Z, kx, ky, L, w, C = -0.0068, D1 = 1.3, D2 = 19.6, A1 = 2.2, A2 = 4.1, M = 0.28, B1 = 10, B2 = 56.6, hbar=1.):
 
     # vetcor y 
-    y = Yvec(icol, B1=B1, D1=D1)
+    y = Yvec(icol, B1=B1, D1=D1, hbar=hbar)
     
     # matrix A
-    A = Amat(d, Z, kx, ky, L, w, C=C, D1=D1, D2=D2, A1=A1, A2=A2, M=M, B1=B1, B2=B2)
+    A = Amat(d, Z, kx, ky, L, w, C=C, D1=D1, D2=D2, A1=A1, A2=A2, M=M, B1=B1, B2=B2, hbar=hbar)
 
     return np.linalg.solve(A, y)
 
 
+
 # Function evaluating the Green's function (Z=z', d=thickness)
-def GFexact(d, z, Z, kx, ky, L, w, C = -0.0068, D1 = 1.3, D2 = 19.6, A1 = 2.2, A2 = 4.1, M = 0.28, B1 = 10, B2 = 56.6):
+def GFexact(d, z, Z, kx, ky, L, w, C = -0.0068, D1 = 1.3, D2 = 19.6, A1 = 2.2, A2 = 4.1, M = 0.28, B1 = 10, B2 = 56.6, hbar = 1.):
 
     # empty matrix for Green's function
     G = np.empty([4, 4], dtype='complex')
 
     # general solution M_ij at z
-    eMz = expMz(z=z, kx=kx, ky=ky, L=L, w=w, C=C, D1=D1, D2=D2, A1=A1, A2=A2, M=M, B1=B1, B2=B2)
+    eMz = expMz(z=z, kx=kx, ky=ky, L=L, w=w, C=C, D1=D1, D2=D2, A1=A1, A2=A2, M=M, B1=B1, B2=B2, hbar=hbar)
 
     # loop over columns (sigma',lambda')
     for icol in range(4):
         
         # particular solutions c_j
-        cj = psolution(icol=icol+1, d=d, Z=Z, kx=kx, ky=ky, L=L, w=w)
+        cj = psolution(icol=icol+1, d=d, Z=Z, kx=kx, ky=ky, L=L, w=w, C=C, D1=D1, D2=D2, A1=A1, A2=A2, M=M, B1=B1, B2=B2, hbar=hbar)
         
         # select left or right depending on z,z'
         cj = cj[:8] if z<Z else cj[8:]
@@ -160,8 +169,6 @@ def GFexact(d, z, Z, kx, ky, L, w, C = -0.0068, D1 = 1.3, D2 = 19.6, A1 = 2.2, A
     return G
 
 
-
-    
 
 #####################################################################
 ######################## NUMERICAL SOLUTION #########################
