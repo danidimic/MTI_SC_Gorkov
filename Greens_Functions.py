@@ -170,6 +170,8 @@ def GFexact(d, z, Z, kx, ky, L, w, C = -0.0068, D1 = 1.3, D2 = 19.6, A1 = 2.2, A
 
 
 
+
+
 #####################################################################
 ######################## NUMERICAL SOLUTION #########################
 #####################################################################
@@ -275,3 +277,48 @@ def GFapprox(Nstates, z, Z, kx, ky, L, w, egval = None, spinors = None, Nlat = N
                 gf[irow][icol] = np.sum( [spinors[istate][z][irow]*np.conjugate(spinors[istate][Z][icol])/(w-egval[istate]/hbar+1j*eta*np.sign(egval[istate]-EF)) for istate in range(Nstates)] )
 
     return gf
+
+
+
+
+
+#####################################################################
+######################### DIAGONAL SOLUTION #########################
+#####################################################################
+
+
+# Analytic result for diagonal part in the trivial case (Z=z', d=thickness)
+def GFdiagonal(d, z, Z, kx, ky, L, w, C = -0.0068, D1 = 1.3, D2 = 19.6, M = 0.28, B1 = 10, B2 = 56.6, hbar = 1.):
+
+    # abbreviations
+    k = np.sqrt(kx**2+ky**2); e0 = C + D2*k**2; m0 = M - B2*k**2
+
+    # empty array for diagonal elements
+    gfdiag = []
+    
+    # loop over the four diagonal elements
+    for idx in range(1,5):
+
+        match idx:     
+            case 1:
+                hp = e0 + m0 + L; hz = B1-D1
+            case 2:
+                hp = e0 + m0 - L; hz = B1-D1
+            case 3:
+                hp = e0 - m0 + L; hz = -B1-D1
+            case 4:
+                hp = e0 - m0 - L; hz = -B1-D1
+
+        # parameters
+        alpha = complex(-hbar/hz,0); beta = complex(-(hbar*w-hp)/hz,0); k = np.sqrt(beta); gamma = np.tan(k*d)
+
+        # left solution
+        if z <= Z:
+            gii = alpha/(k*gamma) * ( np.sin(k*Z) - gamma*np.cos(k*Z) ) * np.sin(k*z)
+        # right solution
+        else:
+            gii = alpha/(k*gamma) * np.sin(k*Z) * ( np.sin(k*z) - gamma*np.cos(k*z) )
+
+        gfdiag.append(gii)
+
+    return np.array(gfdiag)
