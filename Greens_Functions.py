@@ -1,7 +1,9 @@
 import numpy as np
+from numpy.linalg import eigh
+
 from scipy.linalg import expm
-from scipy.sparse import coo_matrix, bmat
-from scipy.sparse.linalg import eigs, eigsh
+from scipy.sparse import bmat
+from scipy.linalg import ishermitian
 
 # Hamiltonian parameters
 params=dict(C = -0.0068, D1 = 1.3, D2 = 19.6, A1 = 2.2, A2 = 4.1, M = 0.28, B1 = 10, B2 = 56.6)
@@ -213,10 +215,10 @@ def TBham(Nlat, dZ, kx, ky, L, C = -0.0068, D1 = 1.3, D2 = 19.6, A1 = 2.2, A2 = 
     onsite = Cmat - 2./np.power(dZ,2)*Amat;
 
     # hopping energy
-    hopping_plus = 1./np.power(dZ,2)*Amat + 1./(2.*np.power(dZ,2))*Bmat
+    hopping_plus = 1./np.power(dZ,2)*Amat + 1./(2.*dZ)*Bmat
 
     # hopping minus
-    hopping_minus = np.conjugate(np.transpose(hopping_plus))
+    hopping_minus = 1./np.power(dZ,2)*Amat - 1./(2.*dZ)*Bmat
 
     # define a zero tight-binding matrix
     TBmat = [ [None for _ in range(Nlat) ] for _ in range(Nlat)]
@@ -235,7 +237,7 @@ def TBham(Nlat, dZ, kx, ky, L, C = -0.0068, D1 = 1.3, D2 = 19.6, A1 = 2.2, A2 = 
 
 
 # Compute energy and wavefunctions in the MTI slab
-def eigenstates(Nlat, dZ, kx, ky, L, Neig=10, C = -0.0068, D1 = 1.3, D2 = 19.6, A1 = 2.2, A2 = 4.1, M = 0.28, B1 = 10, B2 = 56.6):
+def eigenstates(Nlat, dZ, kx, ky, L, C = -0.0068, D1 = 1.3, D2 = 19.6, A1 = 2.2, A2 = 4.1, M = 0.28, B1 = 10, B2 = 56.6):
 
     # thickness 
     d = (Nlat-1)*dZ
@@ -244,37 +246,55 @@ def eigenstates(Nlat, dZ, kx, ky, L, Neig=10, C = -0.0068, D1 = 1.3, D2 = 19.6, 
     
     # build the tight-binding matrix
     tb = TBham(Nlat, dZ, kx, ky, L, C=C, D1=D1, D2=D2, A1=A1, A2=A2, M=M, B1=B1, B2=B2)
-    
+
     # solve the tight-binding problem
-    egval, egvec = eigsh(tb, k=Neig, sigma=0)
+    if ishermitian(tb.toarray()) is True:
+        egval, egvec = eigh(tb.toarray())
+    
+    # indices sorted by absolute value
+    idx_sort = np.argsort(np.abs(egval)) 
+    # reorder egval 
+    egval = egval[idx_sort]
+    # reorder egvec 
+    egvec = [egvec[:, idx] for idx in idx_sort]
 
-    # spinors for wavefunctions
-    spinors = np.array([[ egvec[:, iegv][4*ilat:4*ilat+4] for ilat in range(Nlat)] for iegv in range(Neig)])
+    # wavefunctions as spinors
+    spinors = np.array([[ egv[4*ilat:4*ilat+4] for ilat in range(Nlat)] for egv in egvec])
+    
+    # loop over eigenstates 
+    for iegv in range(len(egval)):
 
-    return [lattice, egval, np.array(spinors)]
+        # probability density for each lattice point
+        pd = np.array([np.vdot(s, s) for s in spinors[iegv]]).real
+        # normalization
+        norm = np.trapz(pd, x=lattice)
+        # normalize spinors over lattice
+        spinors[iegv] = np.divide(spinors[iegv], np.sqrt(norm))
+
+    return lattice, egval, spinors
 
 
 # Function evaluating the Green's function from wavefunctions (Z=z', d=thickness)
-def GFapprox(Nstates, z, Z, kx, ky, L, w, egval = None, spinors = None, Nlat = None, dZ = None, eta = 1E-6, EF = 0., hbar = 1., C = -0.0068, D1 = 1.3, D2 = 19.6, A1 = 2.2, A2 = 4.1, M = 0.28, B1 = 10, B2 = 56.6):
-
+def GFapprox(Nstates, egval, spinors, z, Z, kx, ky, L, w, eta = 1E-9, EF = 0., hbar = 1.):
+    
     # empty matrix for Green's function
     gf = np.zeros([4, 4], dtype='complex')
 
-    # compute eigenstates if not provided
-    if egval is None or spinors is None:
-        # eigenstates
-        lattice, egval, spinors = eigensates(Nlat=Nlat, dZ=dZ, kx=kx, ky=ky, L=L, Neig=Nstates)
+    # loop over columns of GF
+    for icol in range(4):
+        # loop over rows of GF
+        for irow in range(4):
 
-    # check on number of states
-    if Nstates <= spinors.shape[0]:
-
-        # loop over columns of GF
-        for icol in range(4):
-            # loop over rows of GF
-            for irow in range(4):
-
+            # sum over Nstates
+            for istate in range(Nstates):
+                # psi
+                psi = spinors[istate][z][irow]
+                # psi star
+                psistar = np.conjugate(spinors[istate][Z][icol])
+                # energy
+                en = egval[istate]
                 # perform sum over states
-                gf[irow][icol] = np.sum( [spinors[istate][z][irow]*np.conjugate(spinors[istate][Z][icol])/(w-egval[istate]/hbar+1j*eta*np.sign(egval[istate]-EF)) for istate in range(Nstates)] )
+                gf[irow][icol] += psi*psistar/(w-en/hbar+1j*eta*np.sign(en-EF))
 
     return gf
 
