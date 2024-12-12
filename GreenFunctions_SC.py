@@ -36,3 +36,7 @@ def GFanomalous(z, Z, kx, ky, mu, Delta, w, t = 1., hbar = 1.):
     kp = 1j*np.sqrt(1./t*(e0+w0)); km = 1j*np.sqrt(1./t*(e0-w0))
 
     return -hbar*np.conj(Delta)/(4*t*w0) * ( 1./kp*np.exp(1j*kp*np.abs(z-Z)) - 1./km*np.exp(1j*km*np.abs(z-Z)) )    
+
+
+
+
