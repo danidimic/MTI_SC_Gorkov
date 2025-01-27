@@ -51,17 +51,25 @@ def G2_integrand(z1, z2, d, z, Z, kx, ky, L, mu, Delta, omega, Gamma, lT, C = -0
 # Second order correction to the normal GF
 def G2_montecarlo(d, z, Z, kx, ky, L, mu, Delta, omega, Gamma, lT, Nsamples = 10000, C = -0.0068, D1 = 1.3, D2 = 19.6, A1 = 2.2, A2 = 4.1, M = 0.28, B1 = 10, B2 = 56.6, t = 1., hbar = 1.):
 
-    # z1,z2 random samples
-    z1_samples = np.random.uniform(0., d, Nsamples); z2_samples = np.random.uniform(0., d, Nsamples)
+    # normal sampling
+    #z1_samples = np.random.uniform(0., d, Nsamples); z2_samples = np.random.uniform(0., d, Nsamples)
+
+    # importance sampling
+    z1 = np.random.normal(loc=d, scale=lT, size=Nsamples); z2 = np.random.normal(loc=d, scale=lT, size=Nsamples);
+    # restrict to values in [0,d]
+    z1_samples = np.where(z1 > d, 2*d-z1, z1); z2_samples = np.where(z2 > d, 2*d-z2, z2)
+    
+    # importance sampling function 
+    qi = lambda x1,x2: spatial_tunneling(x1,d,lT)*spatial_tunneling(x2,d,lT)
     
     # matrix for mean values
     fsum = np.zeros((4,4), dtype='complex')
 
     # loop over samples
     for (z1,z2) in zip(z1_samples, z2_samples):
-        
+
         # compute mean of fwv function
-        fsum += G2_integrand(z1, z2, d=d, z=z, Z=Z, kx=kx, ky=ky, L=L, mu=mu, Delta=Delta, omega=omega, Gamma=Gamma, lT=lT, C=C, D1=D1, D2=D2, A1=A1, A2=A2, M=M, B1=B1, B2=B2, hbar=hbar)
+        fsum += G2_integrand(z1, z2, d=d, z=z, Z=Z, kx=kx, ky=ky, L=L, mu=mu, Delta=Delta, omega=omega, Gamma=Gamma, lT=lT, C=C, D1=D1, D2=D2, A1=A1, A2=A2, M=M, B1=B1, B2=B2, hbar=hbar)/qi(z1,z2)
 
     return pow(d,2)*fsum/float(Nsamples)
 
@@ -108,7 +116,15 @@ def F2_integrand(z1, z2, d, z, Z, kx, ky, L, mu, Delta, omega, Gamma, lT, C = -0
 def F2_montecarlo(d, z, Z, kx, ky, L, mu, Delta, omega, Gamma, lT, Nsamples = 10000, C = -0.0068, D1 = 1.3, D2 = 19.6, A1 = 2.2, A2 = 4.1, M = 0.28, B1 = 10, B2 = 56.6, t = 1., hbar = 1.):
 
     # z1,z2 random samples
-    z1_samples = np.random.uniform(0., d, Nsamples); z2_samples = np.random.uniform(0., d, Nsamples)
+    #z1_samples = np.random.uniform(0., d, Nsamples); z2_samples = np.random.uniform(0., d, Nsamples)
+
+    # importance sampling
+    z1 = np.random.normal(loc=d, scale=lT, size=Nsamples); z2 = np.random.normal(loc=d, scale=lT, size=Nsamples);
+    # restrict to values in [0,d]
+    z1_samples = np.where(z1 > d, 2*d-z1, z1); z2_samples = np.where(z2 > d, 2*d-z2, z2)
+    
+    # importance sampling function 
+    qi = lambda x1,x2: spatial_tunneling(x1,d,lT)*spatial_tunneling(x2,d,lT)
     
     # matrix for mean values
     fsum = np.zeros((4,4), dtype='complex')
@@ -117,11 +133,11 @@ def F2_montecarlo(d, z, Z, kx, ky, L, mu, Delta, omega, Gamma, lT, Nsamples = 10
     for (z1,z2) in zip(z1_samples, z2_samples):
         
         # compute mean of fwv function
-        fsum += F2_integrand(z1, z2, d=d, z=z, Z=Z, kx=kx, ky=ky, L=L, mu=mu, Delta=Delta, omega=omega, Gamma=Gamma, lT=lT, C=C, D1=D1, D2=D2, A1=A1, A2=A2, M=M, B1=B1, B2=B2, hbar=hbar)
+        fsum += F2_integrand(z1, z2, d=d, z=z, Z=Z, kx=kx, ky=ky, L=L, mu=mu, Delta=Delta, omega=omega, Gamma=Gamma, lT=lT, C=C, D1=D1, D2=D2, A1=A1, A2=A2, M=M, B1=B1, B2=B2, hbar=hbar)/qi(z1,z2)
 
     return pow(d,2)*fsum/float(Nsamples)
-
-
+    
+    
 
 # Second order correction to the normal GF with scipy quad_vec
 def F2_quad_vec(d, z, Z, kx, ky, L, mu, Delta, omega, Gamma, lT, Nint=100, C = -0.0068, D1 = 1.3, D2 = 19.6, A1 = 2.2, A2 = 4.1, M = 0.28, B1 = 10, B2 = 56.6, t = 1., hbar = 1.):

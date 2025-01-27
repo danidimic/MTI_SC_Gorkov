@@ -5,7 +5,7 @@ import numpy as np
 def Read_GreenFunction(filename, startline = 11):
 
 	# path in local folder
-	fn = 'MC-Integrals/Results/' + filename
+	fn = 'MC-Integrals/Results/Uniform-10000/' + filename
 	
 	# list for z and GF
 	zlattice = []; GF = []
