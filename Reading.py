@@ -8,7 +8,7 @@ import numpy as np
 def Read_GreenFunction(filename, startline = 11, zIdx=0):
 
 	# path in local folder
-	fn = 'MC-Integrals/Results/Importance-50000/' + filename
+	fn = 'MC-Integrals/Results/' + filename
 	
 	# list for z and GF
 	zlattice = []; GF = []
@@ -31,6 +31,8 @@ def Read_GreenFunction(filename, startline = 11, zIdx=0):
 				for value in values:
 					# append value
 					gf.append(value)
+			
+			
 				
 				# add z to list
 				zlattice.append(gf[zIdx].real)
