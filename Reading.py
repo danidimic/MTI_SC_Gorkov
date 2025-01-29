@@ -1,3 +1,4 @@
+import cmath
 import numpy as np
 
 
@@ -24,7 +25,7 @@ def Read_GreenFunction(filename, startline = 11, zIdx=0):
 			# read line
 			values = map(complex, line.split())
 			
-			if idx > 10:
+			if idx >= startline:
 			
 				gf = []
 				# loop over elements in line
@@ -55,8 +56,40 @@ def Read_GreenFunction(filename, startline = 11, zIdx=0):
 	return zlattice, GF
 
 
-#z,gf = Read_GreenFunction('G2-zZ.out')
 
-#print(z.shape, gf.shape)
+
+# get the pairing as module and phase
+def Get_Pairing(filename, startline = 11, zIdx=0):
+
+	zlattice, GF = Read_GreenFunction(filename)
+
+	Delta = []; phi = []
+	# loop over zlattice
+	for idx in range(len(zlattice)):
+	
+		# get module of GF
+		module = [[ abs(GF[idx][irow][icol]) for icol in range(4)] for irow in range(4)]
+		# get phase of GF
+		phase = [[ cmath.phase(GF[idx][irow][icol]) for icol in range(4)] for irow in range(4)]
+		
+		# add to Delta and phi
+		Delta.append(module); phi.append(phase)
+	
+	
+	return zlattice, np.array(Delta), np.array(phase)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
