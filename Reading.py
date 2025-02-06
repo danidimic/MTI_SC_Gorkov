@@ -58,32 +58,54 @@ def Read_GreenFunction(filename, startline = 11, zIdx=0):
 
 
 
-# get the pairing as module and phase
-def Get_Pairing(filename, startline = 11, zIdx=0):
+# Read the GF computed vs Zeeman 
+def Read_GreenFunction_vsZeeman(filename, startline = 11):
 
-	zlattice, GF = Read_GreenFunction(filename)
-
-	Delta = []; phi = []
-	# loop over zlattice
-	for idx in range(len(zlattice)):
+	# path in local folder
+	fn = 'MC-Integrals/Results/' + filename
 	
-		# get module of GF
-		module = [[ abs(GF[idx][irow][icol]) for icol in range(4)] for irow in range(4)]
-		# get phase of GF
-		phase = [[ cmath.phase(GF[idx][irow][icol]) for icol in range(4)] for irow in range(4)]
+	# list for z and GF
+	Zeeman = []; GF = []
+
+	with open(fn, 'r') as file:
 		
-		# add to Delta and phi
-		Delta.append(module); phi.append(phase)
+		idx = 0
+		# loop over lines of file
+		for line in file:
+			
+			# count lines
+			idx += 1
+			# read line
+			values = map(complex, line.split())
+			
+			if idx >= startline:
+			
+				gf = []
+				# loop over elements in line
+				for value in values:
+					# append value
+					gf.append(value)
+			
+			
+				# add z to list
+				Zeeman.append(gf[0].real)
+				# remove z or z'
+				gf = np.delete(gf, [0])
+				# reshape into 4x4 array
+				GF.append(np.reshape(gf, (4,4)))
+
 	
+	# convert to np.array
+	Zeeman = np.array(Zeeman); GF = np.array(GF)
+
+	# sorted indices
+	indices = np.argsort(Zeeman)
+	# sorted lattice vector
+	Zeeman = Zeeman[indices]
+	# sorted GF correspondingly
+	GF = GF[indices]
 	
-	return zlattice, np.array(Delta), np.array(phase)
-
-
-
-
-
-
-
+	return Zeeman, GF
 
 
 
