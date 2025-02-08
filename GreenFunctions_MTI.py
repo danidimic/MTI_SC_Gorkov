@@ -349,13 +349,13 @@ def GFdiagonal(d, z, Z, kx, ky, L, w, C = -0.0068, D1 = 1.3, D2 = 19.6, M = 0.28
 
 
 #####################################################################
-#################### FIRST-DERIVATIVE CONDITION #####################
+######################### TRICK SOLUTION ###########################
 #####################################################################
 
 
-
-# Function defining the matrix A (Z=z', d=thickness)
-def Amat_derivative(d, Z, kx, ky, L, w, C = -0.0068, D1 = 1.3, D2 = 19.6, A1 = 2.2, A2 = 4.1, M = 0.28, B1 = 10, B2 = 56.6, hbar = 1.):
+# Function defining the matrix A_12 for the columns 1,2
+# (B.C. vanishing x' and y at the boundaries)
+def Amat_12(d, Z, kx, ky, L, w, C = -0.0068, D1 = 1.3, D2 = 19.6, A1 = 2.2, A2 = 4.1, M = 0.28, B1 = 10, B2 = 56.6, hbar = 1.):
 
     # exponential at z=0
     eM0 = expMz(0, kx, ky, L, w, C=C, D1=D1, D2=D2, A1=A1, A2=A2, M=M, B1=B1, B2=B2, hbar=hbar)
@@ -374,21 +374,73 @@ def Amat_derivative(d, Z, kx, ky, L, w, C = -0.0068, D1 = 1.3, D2 = 19.6, A1 = 2
         for j in range(8):
 
             # boundary conditions z=0
-            # (continuity of function for x-like components)
+            # (vanishing of first-derivative for x-like components)
+            if i==0 or i==1:
+                A[i][j] = eM0[i+4][j]
+                A[i][j+8] = 0
+            # (vanishing of function for y-like components)
+            if i==2 or i==3:
+                A[i][j] = eM0[i][j]
+                A[i][j+8] = 0
+            
+            # boundary conditions z=d
+            # (vanishing of first-derivative for x-like components)
+            if i==0 or i==1:
+                A[i+4][j] = 0
+                A[i+4][j+8] = eMd[i+4][j]
+            # (vanishing of function for y-like components)
+            if i==2 or i==3:
+                A[i+4][j] = 0
+                A[i+4][j+8] = eMd[i][j]
+
+            # continuity condition z=z'
+            A[i+8][j] = eMZ[i][j]
+            A[i+8][j+8] = -eMZ[i][j]
+
+            # derivative jump at z=z'
+            A[i+12][j] = eMZ[i+4][j]
+            A[i+12][j+8] = -eMZ[i+4][j]
+
+    return A
+
+
+
+# Function defining the matrix A_34 for the columns 3, 4
+# (B.C. vanishing x and y' at the boundaries)
+def Amat_34(d, Z, kx, ky, L, w, C = -0.0068, D1 = 1.3, D2 = 19.6, A1 = 2.2, A2 = 4.1, M = 0.28, B1 = 10, B2 = 56.6, hbar = 1.):
+
+    # exponential at z=0
+    eM0 = expMz(0, kx, ky, L, w, C=C, D1=D1, D2=D2, A1=A1, A2=A2, M=M, B1=B1, B2=B2, hbar=hbar)
+    
+    # exponential at z=d
+    eMd = expMz(d, kx, ky, L, w, C=C, D1=D1, D2=D2, A1=A1, A2=A2, M=M, B1=B1, B2=B2, hbar=hbar)
+
+    # exponential at z=Z
+    eMZ = expMz(Z, kx, ky, L, w, C=C, D1=D1, D2=D2, A1=A1, A2=A2, M=M, B1=B1, B2=B2, hbar=hbar)
+
+    # initialize an empty matrix
+    A = np.empty([16, 16], dtype=complex)
+
+    # fill in the matrix A
+    for i in range(4):
+        for j in range(8):
+
+            # boundary conditions z=0
+            # (vanishing of function for x-like components)
             if i==0 or i==1:
                 A[i][j] = eM0[i][j]
                 A[i][j+8] = 0
-            # (continuity of first-derivative for y-like components)
+            # (vanishing of first-derivative for y-like components)
             if i==2 or i==3:
                 A[i][j] = eM0[i+4][j]
                 A[i][j+8] = 0
 
             # boundary conditions z=d
-            # (continuity of function for x-like components)
+            # (vanishing of function for x-like components)
             if i==0 or i==1:
                 A[i+4][j] = 0
                 A[i+4][j+8] = eMd[i][j]
-            # (continuity of first-derivative for y-like components)
+            # (vanishing of first-derivative for y-like components)
             if i==2 or i==3:
                 A[i+4][j] = 0
                 A[i+4][j+8] = eMd[i+4][j]
@@ -402,26 +454,38 @@ def Amat_derivative(d, Z, kx, ky, L, w, C = -0.0068, D1 = 1.3, D2 = 19.6, A1 = 2
             A[i+12][j+8] = -eMZ[i+4][j]
 
     return A
-    
+
 
 
 # Function for solving the system and finding the particular solution
-def psolution_derivative(icol, d, Z, kx, ky, L, w, C = -0.0068, D1 = 1.3, D2 = 19.6, A1 = 2.2, A2 = 4.1, M = 0.28, B1 = 10, B2 = 56.6, hbar=1.):
+def psolution_trick(icol, d, Z, kx, ky, L, w, C = -0.0068, D1 = 1.3, D2 = 19.6, A1 = 2.2, A2 = 4.1, M = 0.28, B1 = 10, B2 = 56.6, hbar=1.):
 
-    # vetcor y 
-    y = Yvec(icol, B1=B1, D1=D1, hbar=hbar)
+    # initialize an empty vector
+    y = np.zeros([16], dtype=complex)
+        
+    # select matrix A and vector y
+    match icol:
     
-    # matrix A
-    A = Amat_derivative(d, Z, kx, ky, L, w, C=C, D1=D1, D2=D2, A1=A1, A2=A2, M=M, B1=B1, B2=B2, hbar=hbar)
+        # column 1,2
+        case 1 | 2:
+            # non-homogeneity vector 
+            y[11+icol] = hbar/(B1-D1)
+            # matrix of equations
+            A = Amat_12(d, Z, kx, ky, L, w, C=C, D1=D1, D2=D2, A1=A1, A2=A2, M=M, B1=B1, B2=B2, hbar=hbar)
+            
+        # column 3,4
+        case 3 | 4:
+            # non-homogeneity vector 
+            y[11+icol] = -hbar/(B1+D1)
+            # matrix of equations
+            A = Amat_34(d, Z, kx, ky, L, w, C=C, D1=D1, D2=D2, A1=A1, A2=A2, M=M, B1=B1, B2=B2, hbar=hbar)
 
     return np.linalg.solve(A, y)
-
-psolution_derivative(icol=0, d=100., Z=35, kx=0., ky=0., L=0., w=0.0025);
 
 
 
 # Function evaluating the Green's function (Z=z', d=thickness)
-def GFderivative(d, z, Z, kx, ky, L, w, C = -0.0068, D1 = 1.3, D2 = 19.6, A1 = 2.2, A2 = 4.1, M = 0.28, B1 = 10, B2 = 56.6, hbar = 1.):
+def GFtrick(d, z, Z, kx, ky, L, w, C = -0.0068, D1 = 1.3, D2 = 19.6, A1 = 2.2, A2 = 4.1, M = 0.28, B1 = 10, B2 = 56.6, hbar = 1.):
 
     # empty matrix for Green's function
     G = np.empty([4, 4], dtype='complex')
@@ -433,7 +497,7 @@ def GFderivative(d, z, Z, kx, ky, L, w, C = -0.0068, D1 = 1.3, D2 = 19.6, A1 = 2
     for icol in range(4):
         
         # particular solutions c_j
-        cj = psolution_derivative(icol=icol+1, d=d, Z=Z, kx=kx, ky=ky, L=L, w=w, C=C, D1=D1, D2=D2, A1=A1, A2=A2, M=M, B1=B1, B2=B2, hbar=hbar)
+        cj = psolution_trick(icol=icol+1, d=d, Z=Z, kx=kx, ky=ky, L=L, w=w, C=C, D1=D1, D2=D2, A1=A1, A2=A2, M=M, B1=B1, B2=B2, hbar=hbar)
         
         # select left or right depending on z,z'
         cj = cj[:8] if z<Z else cj[8:]
@@ -445,8 +509,6 @@ def GFderivative(d, z, Z, kx, ky, L, w, C = -0.0068, D1 = 1.3, D2 = 19.6, A1 = 2
             G[irow][icol] = np.sum( [eMz[irow][j]*cj[j] for j in range(8)] )
         
     return G
-
-
 
 
 
