@@ -9,7 +9,7 @@ import numpy as np
 
 
 # function which computes the normal GF in the SC for energy below the gap
-def GFnormal(z, Z, kx, ky, mu, Delta, w, t = 1., hbar = 1.):
+def GSC(z, Z, kx, ky, mu, Delta, w, t = 1., hbar = 1.):
     
     # energy e0
     e0 = t*(kx**2+ky**2)-mu
@@ -26,17 +26,17 @@ def GFnormal(z, Z, kx, ky, mu, Delta, w, t = 1., hbar = 1.):
     
 
 # function which computes the normal GF in the SC as a matrix
-def GFnormalMat(z, kx, ky, mu, Delta, w, t = 1., hbar = 1.):
+def GSC_matrix(z, kx, ky, mu, Delta, w, t = 1., hbar = 1.):
     
     # compute diagonal elements
-    GSCdiag =  GFnormal(z=z, Z=0., kx=kx, ky=ky, mu=mu, Delta=Delta, w=w, t=t, hbar=hbar)
+    GSCdiag =  GSC(z=z, Z=0., kx=kx, ky=ky, mu=mu, Delta=Delta, w=w, t=t, hbar=hbar)
     
     return np.array([[GSCdiag,0],[0,GSCdiag]])
 
 
 
 # function which computes the anomalous GF in the SC for energy below the gap
-def GFanomalous(z, Z, kx, ky, mu, Delta, w, t = 1., hbar = 1.):
+def FSC(z, Z, kx, ky, mu, Delta, w, t = 1., hbar = 1.):
     
     # energy e0
     e0 = t*(kx**2+ky**2)-mu
@@ -51,10 +51,10 @@ def GFanomalous(z, Z, kx, ky, mu, Delta, w, t = 1., hbar = 1.):
 
 
 # function which computes the normal GF in the SC as a matrix
-def GFanomalousMat(z, kx, ky, mu, Delta, w, t = 1., hbar = 1.):
+def FSC_matrix(z, kx, ky, mu, Delta, w, t = 1., hbar = 1.):
     
     # compute diagonal elements
-    FSCdiag =  GFanomalous(z=z, Z=0., kx=kx, ky=ky, mu=mu, Delta=Delta, w=w, t=t, hbar=hbar)
+    FSCdiag =  FSC(z=z, Z=0., kx=kx, ky=ky, mu=mu, Delta=Delta, w=w, t=t, hbar=hbar)
     
     return np.array([[0,-FSCdiag],[FSCdiag,0]])
 

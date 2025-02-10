@@ -1,8 +1,10 @@
 import numpy as np
 from scipy.integrate import quad_vec
 
-from GreenFunctions_MTI import GFexact
-from GreenFunctions_SC import GFnormal, GFnormalMat, GFanomalous, GFanomalousMat
+from GreenFunctions_SC import GSC_matrix, FSC_matrix
+from GreenFunctions_MTI import GMTI_normalBC, GMTI_modifiedBC, GMTI_analytical
+
+
 
 # Hamiltonian parameters
 params=dict(C = -0.0068, D1 = 1.3, D2 = 19.6, A1 = 2.2, A2 = 4.1, M = 0.28, B1 = 10, B2 = 56.6)
@@ -24,32 +26,33 @@ def spatial_tunneling(z, d, lT):
 
 
 
-##################################
-############ NORMAL ##############
-##################################
+#######################################################
+############### MONTE-CARLO SOLUTION ##################
+#######################################################
 
+
+###### Normal Green's Function #########
 
 # define the integrand functions
-def G2_integrand(z1, z2, d, z, Z, kx, ky, L, mu, Delta, omega, Gamma, lT, C = -0.0068, D1 = 1.3, D2 = 19.6, A1 = 2.2, A2 = 4.1, M = 0.28, B1 = 10, B2 = 56.6, t = 1., hbar = 1.):
+def GMTI2_integrand(z1, z2, d, z, Z, kx, ky, L, mu, Delta, omega, Gamma, lT, C = -0.0068, D1 = 1.3, D2 = 19.6, A1 = 2.2, A2 = 4.1, M = 0.28, B1 = 10, B2 = 56.6, t = 1., hbar = 1.):
 
     # spatial functions
     fz1 = spatial_tunneling(z1, d=d, lT=lT); fz2 = spatial_tunneling(z2, d=d, lT=lT)
 
     # GMTI(z,w)
-    GMTIz = GFexact(d=d, z=z, Z=z1, kx=kx, ky=ky, L=L, w=omega, C=C, D1=D1, D2=D2, A1=A1, A2=A2, M=M, B1=B1, B2=B2, hbar=hbar)
+    GMTIz = GMTI_normalBC(d=d, z=z, Z=z1, kx=kx, ky=ky, L=L, w=omega, C=C, D1=D1, D2=D2, A1=A1, A2=A2, M=M, B1=B1, B2=B2, hbar=hbar)
     
     # GMTI(v,z')
-    GMTIZ = GFexact(d=d, z=z2, Z=Z, kx=kx, ky=ky, L=L, w=omega, C=C, D1=D1, D2=D2, A1=A1, A2=A2, M=M, B1=B1, B2=B2, hbar=hbar)
+    GMTIZ = GMTI_normalBC(d=d, z=z2, Z=Z, kx=kx, ky=ky, L=L, w=omega, C=C, D1=D1, D2=D2, A1=A1, A2=A2, M=M, B1=B1, B2=B2, hbar=hbar)
     
     # GSC(v-w)
-    GSC = GFnormalMat(z=z2-z1, kx=kx, ky=ky, mu=mu, Delta=Delta, w=omega, t=t, hbar=hbar)
+    GSC = GSC_matrix(z=z2-z1, kx=kx, ky=ky, mu=mu, Delta=Delta, w=omega, t=t, hbar=hbar)
     
     return fz1*fz2 * (GMTIz @ Gamma @ GSC @ Gamma.H @ GMTIZ).A
 
 
-
 # Second order correction to the normal GF
-def G2_montecarlo(d, z, Z, kx, ky, L, mu, Delta, omega, Gamma, lT, Nsamples = 10000, C = -0.0068, D1 = 1.3, D2 = 19.6, A1 = 2.2, A2 = 4.1, M = 0.28, B1 = 10, B2 = 56.6, t = 1., hbar = 1.):
+def GMTI2_montecarlo(d, z, Z, kx, ky, L, mu, Delta, omega, Gamma, lT, Nsamples = 10000, C = -0.0068, D1 = 1.3, D2 = 19.6, A1 = 2.2, A2 = 4.1, M = 0.28, B1 = 10, B2 = 56.6, t = 1., hbar = 1.):
 
     # normal sampling
     #z1_samples = np.random.uniform(0., d, Nsamples); z2_samples = np.random.uniform(0., d, Nsamples)
@@ -69,51 +72,35 @@ def G2_montecarlo(d, z, Z, kx, ky, L, mu, Delta, omega, Gamma, lT, Nsamples = 10
     for (z1,z2) in zip(z1_samples, z2_samples):
 
         # compute mean of fwv function
-        fsum += G2_integrand(z1, z2, d=d, z=z, Z=Z, kx=kx, ky=ky, L=L, mu=mu, Delta=Delta, omega=omega, Gamma=Gamma, lT=lT, C=C, D1=D1, D2=D2, A1=A1, A2=A2, M=M, B1=B1, B2=B2, hbar=hbar)/qi(z1,z2)
+        fsum += GMTI2_integrand(z1, z2, d=d, z=z, Z=Z, kx=kx, ky=ky, L=L, mu=mu, Delta=Delta, omega=omega, Gamma=Gamma, lT=lT, C=C, D1=D1, D2=D2, A1=A1, A2=A2, M=M, B1=B1, B2=B2, hbar=hbar)/qi(z1,z2)
 
     return pow(d,2)*fsum/float(Nsamples)
 
 
 
-# Second order correction to the normal GF with scipy quad_vec
-def G2_quad_vec(d, z, Z, kx, ky, L, mu, Delta, omega, Gamma, lT, Nint=100, C = -0.0068, D1 = 1.3, D2 = 19.6, A1 = 2.2, A2 = 4.1, M = 0.28, B1 = 10, B2 = 56.6, t = 1., hbar = 1.):
-
-    # define integrand function 
-    fintegrand = lambda z1, z2: G2_integrand(z1, z2, d=d, z=z, Z=Z, kx=kx, ky=ky, L=L, mu=mu, Delta=Delta, omega=omega, Gamma=Gamma, lT=lT, C=C, D1=D1, D2=D2, A1=A1, A2=A2, M=M, B1=B1, B2=B2, hbar=hbar)
-
-    # compute double integral
-    return quad_vec(lambda z1 : quad_vec(lambda z2: fintegrand(z1, z2), 0., d)[0], 0., d)[0]
-
-
-
-
-##################################
-########### ANOMALOUS ############
-##################################
-
-
+###### Anomalous Green's Function #########
 
 # define the integrand functions
-def F2_integrand(z1, z2, d, z, Z, kx, ky, L, mu, Delta, omega, Gamma, lT, C = -0.0068, D1 = 1.3, D2 = 19.6, A1 = 2.2, A2 = 4.1, M = 0.28, B1 = 10, B2 = 56.6, t = 1., hbar = 1.):
+def FMTI2_integrand(z1, z2, d, z, Z, kx, ky, L, mu, Delta, omega, Gamma, lT, C = -0.0068, D1 = 1.3, D2 = 19.6, A1 = 2.2, A2 = 4.1, M = 0.28, B1 = 10, B2 = 56.6, t = 1., hbar = 1.):
 
     # spatial functions
     fz1 = spatial_tunneling(z1, d=d, lT=lT); fz2 = spatial_tunneling(z2, d=d, lT=lT)
 
     # GMTI(z,z1; -omega)
-    GMTIz = np.transpose(GFexact(d=d, z=z, Z=z1, kx=kx, ky=ky, L=L, w=-omega, C=C, D1=D1, D2=D2, A1=A1, A2=A2, M=M, B1=B1, B2=B2, hbar=hbar))
+    GMTIz = np.transpose(GMTI_normalBC(d=d, z=z, Z=z1, kx=kx, ky=ky, L=L, w=-omega, C=C, D1=D1, D2=D2, A1=A1, A2=A2, M=M, B1=B1, B2=B2, hbar=hbar))
     
     # GMTI(z2,z'; omega)
-    GMTIZ = GFexact(d=d, z=z2, Z=Z, kx=kx, ky=ky, L=L, w=omega, C=C, D1=D1, D2=D2, A1=A1, A2=A2, M=M, B1=B1, B2=B2, hbar=hbar)
+    GMTIZ = GMTI_normalBC(d=d, z=z2, Z=Z, kx=kx, ky=ky, L=L, w=omega, C=C, D1=D1, D2=D2, A1=A1, A2=A2, M=M, B1=B1, B2=B2, hbar=hbar)
     
     # FSC(z2-z1; omega)
-    FSC = GFanomalousMat(z=z2-z1, kx=kx, ky=ky, mu=mu, Delta=Delta, w=omega, t=t, hbar=hbar)
+    FSC = FSC_matrix(z=z2-z1, kx=kx, ky=ky, mu=mu, Delta=Delta, w=omega, t=t, hbar=hbar)
     
     return fz1*fz2 * (GMTIz @ np.conjugate(Gamma) @ FSC @ Gamma.H @ GMTIZ).A
 
 
 
 # Second order correction to the normal GF
-def F2_montecarlo(d, z, Z, kx, ky, L, mu, Delta, omega, Gamma, lT, Nsamples = 10000, C = -0.0068, D1 = 1.3, D2 = 19.6, A1 = 2.2, A2 = 4.1, M = 0.28, B1 = 10, B2 = 56.6, t = 1., hbar = 1.):
+def FMTI2_montecarlo(d, z, Z, kx, ky, L, mu, Delta, omega, Gamma, lT, Nsamples = 10000, C = -0.0068, D1 = 1.3, D2 = 19.6, A1 = 2.2, A2 = 4.1, M = 0.28, B1 = 10, B2 = 56.6, t = 1., hbar = 1.):
 
     # z1,z2 random samples
     #z1_samples = np.random.uniform(0., d, Nsamples); z2_samples = np.random.uniform(0., d, Nsamples)
@@ -133,18 +120,82 @@ def F2_montecarlo(d, z, Z, kx, ky, L, mu, Delta, omega, Gamma, lT, Nsamples = 10
     for (z1,z2) in zip(z1_samples, z2_samples):
         
         # compute mean of fwv function
-        fsum += F2_integrand(z1, z2, d=d, z=z, Z=Z, kx=kx, ky=ky, L=L, mu=mu, Delta=Delta, omega=omega, Gamma=Gamma, lT=lT, C=C, D1=D1, D2=D2, A1=A1, A2=A2, M=M, B1=B1, B2=B2, hbar=hbar)/qi(z1,z2)
+        fsum += FMTI2_integrand(z1, z2, d=d, z=z, Z=Z, kx=kx, ky=ky, L=L, mu=mu, Delta=Delta, omega=omega, Gamma=Gamma, lT=lT, C=C, D1=D1, D2=D2, A1=A1, A2=A2, M=M, B1=B1, B2=B2, hbar=hbar)/qi(z1,z2)
 
     return pow(d,2)*fsum/float(Nsamples)
     
+
+
+
+
+#######################################################
+################ ANALYTICAL SOLUTION ##################
+#######################################################
+
+
+# Function evaluating the G2 with analytical formula
+def GMTI2_analytical(d, z, Z, z0, L, mu, Delta, omega, Gamma, C0 = -0.0068, D1 = 1.3, A1 = 2.2, M0 = 0.28, B1 = 10, t=1., hbar = 1.):
+
+    # GMTI(z,z0)
+    GMTIz = GMTI_analytical(d=d, z=z, Z=z0, L=L, omega=omega, C0=C0, D1=D1, A1=A1, M0=M0, B1=B1, hbar=hbar)
     
+    # GMTI(z0,z')
+    GMTIZ = GMTI_analytical(d=d, z=z0, Z=Z, L=L, omega=omega, C0=C0, D1=D1, A1=A1, M0=M0, B1=B1, hbar=hbar)
+    
+    # GSC(0)
+    GSC = GSC_matrix(z=0., kx=0., ky=0., mu=mu, Delta=Delta, w=omega, t=t, hbar=hbar)
+    
+    return (GMTIz @ Gamma @ GSC @ Gamma.H @ GMTIZ).A
 
-# Second order correction to the normal GF with scipy quad_vec
-def F2_quad_vec(d, z, Z, kx, ky, L, mu, Delta, omega, Gamma, lT, Nint=100, C = -0.0068, D1 = 1.3, D2 = 19.6, A1 = 2.2, A2 = 4.1, M = 0.28, B1 = 10, B2 = 56.6, t = 1., hbar = 1.):
 
-    # define integrand function 
-    fintegrand = lambda z1, z2: F2_integrand(z1, z2, d=d, z=z, Z=Z, kx=kx, ky=ky, L=L, mu=mu, Delta=Delta, omega=omega, Gamma=Gamma, lT=lT, C=C, D1=D1, D2=D2, A1=A1, A2=A2, M=M, B1=B1, B2=B2, hbar=hbar)
+# Function evaluating the G2 with numerical (trick) method
+def GMTI2_modifiedBC(d, z, Z, z0, kx, ky, L, mu, Delta, omega, Gamma, C = -0.0068, D1 = 1.3, D2 = 19.6, A1 = 2.2, A2 = 4.1, M = 0.28, B1 = 10, B2 = 56.6, t=1., hbar = 1.):
 
-    # compute double integral
-    return quad_vec(lambda z1 : quad_vec(lambda z2: fintegrand(z1, z2), 0., d)[0], 0., d)[0]
+    # GMTI(z,z0)
+    GMTIz = GMTI_modifiedBC(d=d, z=z, Z=z0, kx=kx, ky=ky, L=L, w=omega, C=C, D1=D1, D2=D2, A1=A1, A2=A2, M=M, B1=B1, B2=B2, hbar=hbar)
+    
+    # GMTI(z0,z')
+    GMTIZ = GMTI_modifiedBC(d=d, z=z0, Z=Z, kx=kx, ky=ky, L=L, w=omega, C=C, D1=D1, D2=D2, A1=A1, A2=A2, M=M, B1=B1, B2=B2, hbar=hbar)
+    
+    # GSC(0)
+    GSC = GSC_matrix(z=0., kx=kx, ky=ky, mu=mu, Delta=Delta, w=omega, t=t, hbar=hbar)
+    
+    return (GMTIz @ Gamma @ GSC @ Gamma.H @ GMTIZ).A
+
+
+# Function evaluating the F2 with analytical formula
+def FMTI2_analytical(d, z, Z, z0, L, mu, Delta, omega, Gamma, C0 = -0.0068, D1 = 1.3, A1 = 2.2, M0 = 0.28, B1 = 10, t=1., hbar = 1.):
+
+    # GMTI(z0,z)
+    GMTIz = GMTI_analytical(d=d, z=z0, Z=z, L=L, omega=-omega, C0=C0, D1=D1, A1=A1, M0=M0, B1=B1, hbar=hbar)
+    
+    # GMTI(z0,z')
+    GMTIZ = GMTI_analytical(d=d, z=z0, Z=Z, L=L, omega=omega, C0=C0, D1=D1, A1=A1, M0=M0, B1=B1, hbar=hbar)
+    
+    # FSC(0)
+    FSC = FSC_matrix(z=0., kx=0., ky=0., mu=mu, Delta=Delta, w=omega, t=t, hbar=hbar)
+    
+    return (np.transpose(GMTIz) @ np.conj(Gamma) @ FSC @ Gamma.H @ GMTIZ).A
+
+
+# Function evaluating the F2 with numerical (trick) method
+def FMTI2_modifiedBC(d, z, Z, z0, kx, ky, L, mu, Delta, omega, Gamma, C = -0.0068, D1 = 1.3, D2 = 19.6, A1 = 2.2, A2 = 4.1, M = 0.28, B1 = 10, B2 = 56.6, t=1., hbar = 1.):
+
+    # GMTI(z0,z)
+    GMTIz = GMTI_modifiedBC(d=d, z=z0, Z=z, kx=kx, ky=ky, L=L, w=-omega, C=C, D1=D1, D2=D2, A1=A1, A2=A2, M=M, B1=B1, B2=B2, hbar=hbar)
+    
+    # GMTI(z0,z')
+    GMTIZ = GMTI_modifiedBC(d=d, z=z0, Z=Z, kx=kx, ky=ky, L=L, w=omega, C=C, D1=D1, D2=D2, A1=A1, A2=A2, M=M, B1=B1, B2=B2, hbar=hbar)
+
+    # FSC(0)
+    FSC = FSC_matrix(z=0., kx=0., ky=0., mu=mu, Delta=Delta, w=omega, t=t, hbar=hbar)
+    
+    return (np.transpose(GMTIz) @ Gamma @ FSC @ Gamma.H @ GMTIZ).A
+
+
+
+
+
+
+
 
