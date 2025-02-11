@@ -188,7 +188,7 @@ def FMTI2_modifiedBC(d, z, Z, z0, kx, ky, L, mu, Delta, omega, Gamma, C = -0.006
     GMTIZ = GMTI_modifiedBC(d=d, z=z0, Z=Z, kx=kx, ky=ky, L=L, w=omega, C=C, D1=D1, D2=D2, A1=A1, A2=A2, M=M, B1=B1, B2=B2, hbar=hbar)
 
     # FSC(0)
-    FSC = FSC_matrix(z=0., kx=0., ky=0., mu=mu, Delta=Delta, w=omega, t=t, hbar=hbar)
+    FSC = FSC_matrix(z=0., kx=kx, ky=ky, mu=mu, Delta=Delta, w=omega, t=t, hbar=hbar)
     
     return (np.transpose(GMTIz) @ Gamma @ FSC @ Gamma.H @ GMTIZ).A
 
