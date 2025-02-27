@@ -6,3 +6,7 @@ __pycache__/
 
 egval_decoupled.txt
 egvec_decoupled.txt
+egval_full.txt
+egvec_full.txt
+egval_full_k.txt
+egvec_full_k.txt
