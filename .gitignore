@@ -3,4 +3,6 @@ Figures/
 MC-Integrals/
 __pycache__/
 .ipynb_checkpoints/
-TomGF.py
+
+egval_decoupled.txt
+egvec_decoupled.txt
