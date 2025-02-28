@@ -485,7 +485,7 @@ def eigenstates(Nlat, dZ, kx, ky, L, C = -0.0068, D1 = 1.3, D2 = 19.6, A1 = 2.2,
 
 
 # Function evaluating the Green's function from wavefunctions (Z=z', d=thickness)
-def GMTI_discretized(Nstates, egval, spinors, z, Z, kx, ky, L, w, eta = 1E-9, EF = 0., hbar = 1.):
+def GMTI_discretized(Nstates, egval, spinors, z, Z, w, n0 = 0, eta = 1E-9, EF = 0., hbar = 1.):
     
     # empty matrix for Green's function
     gf = np.zeros([4, 4], dtype='complex')
@@ -498,9 +498,9 @@ def GMTI_discretized(Nstates, egval, spinors, z, Z, kx, ky, L, w, eta = 1E-9, EF
             # sum over Nstates
             for istate in range(Nstates):
                 # psi
-                psi = spinors[istate][z][irow]
+                psi = spinors[n0+istate][z][irow]
                 # psi star
-                psistar = np.conjugate(spinors[istate][Z][icol])
+                psistar = np.conjugate(spinors[n0+istate][Z][icol])
                 # energy
                 en = egval[istate]
                 # perform sum over states
