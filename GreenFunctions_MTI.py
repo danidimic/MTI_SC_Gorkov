@@ -502,9 +502,10 @@ def GMTI_discretized(Nstates, egval, spinors, z, Z, w, n0 = 0, eta = 1E-9, EF = 
                 # psi star
                 psistar = np.conjugate(spinors[n0+istate][Z][icol])
                 # energy
-                en = egval[istate]
+                en = egval[n0+istate]
                 # perform sum over states
                 gf[irow][icol] += psi*psistar/(w-en/hbar+1j*eta*np.sign(en-EF))
+                
 
     return gf
 
