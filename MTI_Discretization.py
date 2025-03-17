@@ -131,6 +131,209 @@ def eigenstates_Dirichlet(Nlat, dZ, kx, ky, L, C = -0.0068, D1 = 1.3, D2 = 19.6,
 
 
 #####################################################################
+#################### NEUMANN B.C. TIGHT-BINDING #####################
+#####################################################################
+
+
+# Build the tigh-binding hamiltonian (Nlat=lattice points, dZ=lattice spacing)
+def TBham_Neumann(Nlat, dZ, kx, ky, L, C = -0.0068, D1 = 1.3, D2 = 19.6, A1 = 2.2, A2 = 4.1, M = 0.28, B1 = 10, B2 = 56.6):
+
+    # build A,B,C matrices
+    [Amat, Bmat, Cmat] = ABCmat(kx, ky, L, C=C, D1=D1, D2=D2, A1=A1, A2=A2, M=M, B1=B1, B2=B2)
+
+    # on-site energy
+    onsite = Cmat - 2./np.power(dZ,2)*Amat;
+
+    # hopping energy
+    hopping_plus = 1./np.power(dZ,2)*Amat + 1./(2.*dZ)*Bmat
+
+    # hopping minus
+    hopping_minus = 1./np.power(dZ,2)*Amat - 1./(2.*dZ)*Bmat
+
+    # hopping at the interfaces
+    hopping_int = hopping_plus + hopping_minus
+    
+
+    # define a zero tight-binding matrix
+    TBmat = [ [None for _ in range(Nlat) ] for _ in range(Nlat)]
+		
+	# populate the tight-binding matrix
+    for i in range(Nlat):
+		
+        # onsite diagonal energy 
+        TBmat[i][i] = onsite
+        # hopping energy (n+1)
+        if i+1 < Nlat: TBmat[i][i+1] = hopping_plus
+        # hopping energy (n-1)
+        if i-1 > -1: TBmat[i][i-1] = hopping_minus
+
+    # modify the hoppings at the interface z=0
+    TBmat[0][1] = hopping_int; #TBmat[1][0] = hopping_int;
+    
+    # modify the hoppings at the interface z=d
+    TBmat[Nlat-1][Nlat-2] = hopping_int; #TBmat[Nlat-2][Nlat-1] = hopping_int; 
+
+    return bmat(TBmat)
+
+
+
+# Compute energy and wavefunctions in the MTI slab
+def eigenstates_Neumann(Nlat, dZ, kx, ky, L, C = -0.0068, D1 = 1.3, D2 = 19.6, A1 = 2.2, A2 = 4.1, M = 0.28, B1 = 10, B2 = 56.6):
+
+    # thickness 
+    d = (Nlat-1)*dZ
+    # lattice
+    lattice = np.linspace(0., d, num=Nlat)
+    
+    # build the tight-binding matrix
+    tb = TBham(Nlat, dZ, kx, ky, L, C=C, D1=D1, D2=D2, A1=A1, A2=A2, M=M, B1=B1, B2=B2)
+        
+    # solve the tight-binding problem
+    if ishermitian(tb.toarray()) is True:
+        # print rank of TB matrix
+        #rank = matrix_rank(tb.toarray()); print(rank, tb.toarray().shape)
+        # compute energy spectrum
+        egval, egvec = eigh(tb.toarray())
+    else:
+        egval, egvec = eig(tb.toarray())
+    
+    # indices sorted by absolute value
+    idx_sort = np.argsort(np.abs(egval)) 
+    # reorder egval 
+    egval = egval[idx_sort]
+    # reorder egvec 
+    egvec = [egvec[:, idx] for idx in idx_sort]
+
+    # wavefunctions as spinors
+    spinors = np.array([[ egv[4*ilat:4*ilat+4] for ilat in range(Nlat)] for egv in egvec])
+    
+    # loop over eigenstates 
+    for iegv in range(len(egval)):
+
+        # probability density for each lattice point
+        pd = np.array([np.vdot(s, s) for s in spinors[iegv]]).real
+        # normalization
+        norm = np.trapz(pd, x=lattice)
+        # normalize spinors over lattice
+        spinors[iegv] = np.divide(spinors[iegv], np.sqrt(norm))
+
+    return lattice, egval, spinors
+
+
+
+
+#####################################################################
+##################### MIXED B.C. TIGHT-BINDING ######################
+#####################################################################
+
+
+# Build the hopping terms at the interfaces 
+def hoppings_interface(dZ, D1 = 1.3, A1 = 2.2, B1 = 10):
+
+    h_int_0 = [[1./np.power(dZ,2)*(B1-D1), 0, 0, 0],
+              [0, 1./np.power(dZ,2)*(B1-D1), 0, 0],
+              [-1j*A1/(2*dZ), 0, -2./np.power(dZ,2)*(B1+D1), 0],
+              [0, 1j*A1/(2*dZ), 0, -2./np.power(dZ,2)*(B1+D1)]]
+
+    h_int_N = [[1./np.power(dZ,2)*(B1-D1), 0, 0, 0],
+              [0, 1./np.power(dZ,2)*(B1-D1), 0, 0],
+              [1j*A1/(2*dZ), 0, -2./np.power(dZ,2)*(B1+D1), 0],
+              [0, -1j*A1/(2*dZ), 0, -2./np.power(dZ,2)*(B1+D1)]]
+
+    return np.array(h_int_0), np.array(h_int_N)    
+
+
+
+# Build the tigh-binding hamiltonian (Nlat=lattice points, dZ=lattice spacing)
+def TBham_mixed(Nlat, dZ, kx, ky, L, C = -0.0068, D1 = 1.3, D2 = 19.6, A1 = 2.2, A2 = 4.1, M = 0.28, B1 = 10, B2 = 56.6):
+
+    # build A,B,C matrices
+    [Amat, Bmat, Cmat] = ABCmat(kx, ky, L, C=C, D1=D1, D2=D2, A1=A1, A2=A2, M=M, B1=B1, B2=B2)
+
+    # on-site energy
+    onsite = Cmat - 2./np.power(dZ,2)*Amat;
+
+    # hopping energy
+    hopping_plus = 1./np.power(dZ,2)*Amat + 1./(2.*dZ)*Bmat
+
+    # hopping minus
+    hopping_minus = 1./np.power(dZ,2)*Amat - 1./(2.*dZ)*Bmat
+
+    # hopping at the interfaces
+    h_0, h_N = hoppings_interface(dZ=dZ, D1=D1, A1=A1, B1=B1)
+    
+
+    # define a zero tight-binding matrix
+    TBmat = [ [None for _ in range(Nlat) ] for _ in range(Nlat)]
+		
+	# populate the tight-binding matrix
+    for i in range(Nlat):
+		
+        # onsite diagonal energy 
+        TBmat[i][i] = onsite
+        # hopping energy (n+1)
+        if i+1 < Nlat: TBmat[i][i+1] = hopping_plus
+        # hopping energy (n-1)
+        if i-1 > -1: TBmat[i][i-1] = hopping_minus
+
+    # modify the hoppings at the interface z=0
+    TBmat[0][1] = h_0
+    
+    # modify the hoppings at the interface z=d
+    TBmat[Nlat-1][Nlat-2] = h_N
+
+    return bmat(TBmat)
+
+
+
+# Compute energy and wavefunctions in the MTI slab
+def eigenstates_mixed(Nlat, dZ, kx, ky, L, C = -0.0068, D1 = 1.3, D2 = 19.6, A1 = 2.2, A2 = 4.1, M = 0.28, B1 = 10, B2 = 56.6):
+
+    # thickness 
+    d = (Nlat-1)*dZ
+    # lattice
+    lattice = np.linspace(0., d, num=Nlat)
+    
+    # build the tight-binding matrix
+    tb = TBham(Nlat, dZ, kx, ky, L, C=C, D1=D1, D2=D2, A1=A1, A2=A2, M=M, B1=B1, B2=B2)
+
+    #print(ishermitian(tb.toarray()))
+    # solve the tight-binding problem
+    if ishermitian(tb.toarray()) is True:
+        # print rank of TB matrix
+        #rank = matrix_rank(tb.toarray()); print(rank, tb.toarray().shape)
+        # compute energy spectrum
+        egval, egvec = eigh(tb.toarray())
+    else:
+        egval, egvec = eig(tb.toarray())
+    
+    # indices sorted by absolute value
+    idx_sort = np.argsort(np.abs(egval)) 
+    # reorder egval 
+    egval = egval[idx_sort]
+    # reorder egvec 
+    egvec = [egvec[:, idx] for idx in idx_sort]
+
+    # wavefunctions as spinors
+    spinors = np.array([[ egv[4*ilat:4*ilat+4] for ilat in range(Nlat)] for egv in egvec])
+    
+    # loop over eigenstates 
+    for iegv in range(len(egval)):
+
+        # probability density for each lattice point
+        pd = np.array([np.vdot(s, s) for s in spinors[iegv]]).real
+        # normalization
+        norm = np.trapz(pd, x=lattice)
+        # normalize spinors over lattice
+        spinors[iegv] = np.divide(spinors[iegv], np.sqrt(norm))
+
+    return lattice, egval, spinors
+
+
+
+
+
+#####################################################################
 ################## FULL HAMILTONIAN TIGHT-BINDING ###################
 #####################################################################
 
