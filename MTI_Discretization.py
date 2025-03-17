@@ -1,5 +1,5 @@
 import numpy as np
-from numpy.linalg import eigh
+from numpy.linalg import eig, eigh
 
 from scipy.linalg import expm
 from scipy.sparse import bmat
@@ -186,7 +186,7 @@ def eigenstates_Neumann(Nlat, dZ, kx, ky, L, C = -0.0068, D1 = 1.3, D2 = 19.6, A
     lattice = np.linspace(0., d, num=Nlat)
     
     # build the tight-binding matrix
-    tb = TBham(Nlat, dZ, kx, ky, L, C=C, D1=D1, D2=D2, A1=A1, A2=A2, M=M, B1=B1, B2=B2)
+    tb = TBham_Neumann(Nlat, dZ, kx, ky, L, C=C, D1=D1, D2=D2, A1=A1, A2=A2, M=M, B1=B1, B2=B2)
         
     # solve the tight-binding problem
     if ishermitian(tb.toarray()) is True:
@@ -295,7 +295,7 @@ def eigenstates_mixed(Nlat, dZ, kx, ky, L, C = -0.0068, D1 = 1.3, D2 = 19.6, A1 
     lattice = np.linspace(0., d, num=Nlat)
     
     # build the tight-binding matrix
-    tb = TBham(Nlat, dZ, kx, ky, L, C=C, D1=D1, D2=D2, A1=A1, A2=A2, M=M, B1=B1, B2=B2)
+    tb = TBham_mixed(Nlat, dZ, kx, ky, L, C=C, D1=D1, D2=D2, A1=A1, A2=A2, M=M, B1=B1, B2=B2)
 
     #print(ishermitian(tb.toarray()))
     # solve the tight-binding problem
