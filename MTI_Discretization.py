@@ -410,7 +410,7 @@ def ABCmatrices(kx, ky, mu, Delta, L, dZ, G, C0 = -0.0068, D1 = 1.3, D2 = 19.6, 
 
 # Build the tigh-binding hamiltonian 
 # (Nlat=lattice points, dZ=lattice spacing, zR = right interface, zL = left interface, z0 = tunneling interface)
-def TBham_FullHamiltonian(kx, ky, mu, Delta, L, Nlat, dZ, zL, zR, z0, G, C0 = -0.0068, D1 = 1.3, D2 = 19.6, A1 = 2.2, A2 = 4.1, M = 0.28, B1 = 10, B2 = 56.6, t = 1.):
+def TBham_FullHamiltonian_Dirichlet(kx, ky, mu, Delta, L, Nlat, dZ, zL, zR, z0, G, C0 = -0.0068, D1 = 1.3, D2 = 19.6, A1 = 2.2, A2 = 4.1, M = 0.28, B1 = 10, B2 = 56.6, t = 1.):
 
     # get A,B,C matrices
     A,B,C, Asc,Csc, Tun = ABCmatrices(kx=kx, ky=ky, mu=mu, Delta=Delta, L=L, dZ=dZ, G=G, C0=C0, D1=D1, D2=D2, A1=A1, A2=A2, M=M, B1=B1, B2=B2, t=t)
@@ -463,7 +463,7 @@ def TBham_FullHamiltonian(kx, ky, mu, Delta, L, Nlat, dZ, zL, zR, z0, G, C0 = -0
 
 
 # Compute energy and wavefunctions in the full system
-def eigenstates_FullHamiltonian(kx, ky, mu, Delta, L, Nlat, dZ, zL, zR, z0, G, C0 = -0.0068, D1 = 1.3, D2 = 19.6, A1 = 2.2, A2 = 4.1, M = 0.28, B1 = 10, B2 = 56.6, t = 1.):
+def eigenstates_FullHamiltonian_Dirichlet(kx, ky, mu, Delta, L, Nlat, dZ, zL, zR, z0, G, C0 = -0.0068, D1 = 1.3, D2 = 19.6, A1 = 2.2, A2 = 4.1, M = 0.28, B1 = 10, B2 = 56.6, t = 1.):
 
     # number of components
     Nc = 8
@@ -544,6 +544,7 @@ def getComponents(egvec, Nlat, type='all'):
                 components.append( np.array([[ egv[Nc*ilat+icomp] for ilat in range(Nlat)] for egv in egvec]) )
 
     return components
+
 
 
 
