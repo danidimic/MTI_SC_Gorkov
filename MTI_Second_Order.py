@@ -10,7 +10,6 @@ params=dict(C = -0.0068, D1 = 1.3, D2 = 19.6, A1 = 2.2, A2 = 4.1, M = 0.28, B1 =
 
 
 
-
 #######################################################
 ############# SOLUTION WITH NEUMANN B.C. ##############
 #######################################################
@@ -51,14 +50,43 @@ def FMTI2_NeumannBC(d, z, Z, z0, kx, ky, L, mu, Delta, omega, Gamma, C = -0.0068
 
 
 
+#######################################################
+############ DISCRETE FOURIER TRANSFORM ###############
+#######################################################
 
 
+# Evaluate discrete Fourier transform in relative coordinates
+# zrelative=lattice of relative distances z1-z2; # Z0=center of mass of Cooper pair
+def DiscreteFT(zrelative, Z0, d, z0, kx, ky, L, mu, Delta, omega, Gamma, C = -0.0068, D1 = 1.3, D2 = 19.6, A1 = 2.2, A2 = 4.1, M = 0.28, B1 = 10, B2 = 56.6, hbar=1., t=1.):
 
+    # lattice spacing for relative coordinates
+    a = abs( zrelative[1]-zrelative[2] ); N = len(zrelative)
 
-
-
-
-
+    # F2 in relative coordinates
+    F2_rc = []; 
+    # loop over relative coordinate z
+    for z in zrelative:
+    
+        # separate coordinates z1, z2
+        z1 = Z0 + 1/2*z; z2 = Z0 - 1/2*z
+    
+        # evaluate F2 as function of relative position z for fixed center of mass Z
+        F2_rc.append( FMTI2_NeumannBC(d=d, z=z1, Z=z2, z0=z0, kx=kx, ky=ky, L=L, mu=mu, Delta=Delta, omega=omega, Gamma=Gamma, C=C, D1=D1, D2=D2, A1=A1, A2=A2, M=M, B1=B1, B2=B2, hbar=hbar) )
+    
+    # array for F2 in relative coordinates
+    F2_rc = np.array(F2_rc)
+    
+    # shift origin in z=0
+    F2_rc = np.fft.fftshift(F2_rc)
+    # evaluate discrete Fourier transform
+    F2_k = np.fft.fft(F2_rc)
+    # shift origin in k=0
+    F2_k = np.fft.fftshift(F2_k)
+    
+    # corresponding k values
+    k = 2 * np.pi * np.fft.fftshift(np.fft.fftfreq(N, d=a))
+    
+    return k, F2_k
 
 
 
