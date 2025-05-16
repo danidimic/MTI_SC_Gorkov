@@ -112,6 +112,7 @@ def coefficients(spin, L, omega, C0 = -0.0068, D1 = 1.3, A1 = 2.2, M0 = 0.28, B1
 
 
 # function for change of basis in MTI Green's function
+# from parity block-basis to spin-block basis
 def Change_Basis(gf):
 
     g_new = [[gf[0][0], gf[0][2], gf[0][1], gf[0][3]],
