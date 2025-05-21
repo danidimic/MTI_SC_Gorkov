@@ -1,7 +1,132 @@
 from IPython.display import Math, display
-from sympy import Symbol, Matrix, I, init_printing, simplify, trace, latex, kronecker_product
+from sympy import Symbol, Matrix, I, init_printing, simplify, factor_terms, trace, latex, kronecker_product, sqrt
 
 
+
+# define physical basis for pairing
+basis = [r"\uparrow +", r"\uparrow -", r"\downarrow +", r"\downarrow -"]
+
+# build a 4×4 Matrix of Symbols f_{α,β}
+M = Matrix([[ Symbol(f"f_{{{i},{j}}}") 
+              for j in basis ] 
+            for i in basis ])
+            
+
+
+
+#####################################################################
+################## PROJECTION OVER SINGLET/TRIPLET ##################
+#####################################################################
+
+
+# enable LaTeX rendering
+init_printing(use_latex='mathjax')
+
+
+# define Pauli matrices
+s0 = Matrix([[1,0],[0,1]])
+sx = Matrix([[0,1],[1,0]])
+sy = Matrix([[0,-I],[I,0]])
+sz = Matrix([[1,0],[0,-1]])
+
+
+# define the basis for the projection
+basis = {
+    '11':   (s0 + sz)/2,
+    '22':   (s0 - sz)/2,
+    'sym':  sx/sqrt(2),
+    'asym': -I*sy/sqrt(2)
+}
+
+
+# define LaTeX for spin matrices
+basis_sigma = {
+    '11':   r"\sigma_{\uparrow\uparrow}",
+    '22':   r"\sigma_{\downarrow\downarrow}",
+    'sym':  r"\sigma_{(\uparrow\downarrow+\downarrow\uparrow)}",
+    'asym': r"\sigma_{(\downarrow\uparrow-\uparrow\downarrow)}"
+}
+
+# labels for projection
+label_sigma = {
+    '11':   r"\uparrow\uparrow",
+    '22':   r"\downarrow\downarrow",
+    'sym':  r"(\uparrow\downarrow+\downarrow\uparrow)",
+    'asym': r"(\downarrow\uparrow-\uparrow\downarrow)"
+}
+
+
+# define LaTeX for orbital matrices
+basis_lambda = {
+    '11':   r"\lambda_{+ +}",
+    '22':   r"\lambda_{- -}",
+    'sym':  r"\lambda_{sym}",
+    'asym': r"\lambda_{asym}"
+}
+
+# labels for projection
+label_lambda = {
+    '11':   r"++",
+    '22':   r"--",
+    'sym':  r"sym",
+    'asym': r"asym"
+}
+
+
+
+# define projection over spin singlet and triplet basis
+def singlet_triplet_projection(M: Matrix, spin: str, orbital: str):
+
+    # get the matrix to project the pairing
+    B_ab = kronecker_product(basis[spin], basis[orbital])
+    # project
+    c = simplify(trace(B_ab * M))
+
+    # form the two-qubit basis element
+    B_ab = kronecker_product(basis[spin], basis[orbital])
+    # project
+    c = simplify(trace(B_ab * M))
+    # build & display MathJax
+    eq = rf"""
+    f_{{{label_sigma[spin]},{label_lambda[orbital]}}}(\mathbf{{k}},\omega)
+    \;=\;
+    \mathrm{{Tr}}\!\Bigl[
+      ({basis_sigma[spin]} \otimes {basis_lambda[orbital]})\, \Delta_{{\mathrm{{ind}}}}(\mathbf{{k}},\omega)
+    \Bigr]
+    \;=\;
+    {latex(c)}
+    """
+    
+    display(Math(eq))
+
+
+
+# function which render the matrix corresponding to different channels
+def pairing_channels(spin: str, orbital: str):
+
+    # get spin matrix
+    A = basis[spin]
+    # get orbital matrix
+    B = basis[orbital]
+    # evaluate tensor product
+    T = kronecker_product(A, B)
+    
+    eq = rf"""
+    {basis_sigma[spin]} \otimes {basis_lambda[orbital]}
+    \;=\;
+    {latex(T)}
+    """
+    display(Math(eq))
+
+
+
+
+
+#####################################################################
+################## PROJECTION OVER PAULI MATRICES  ##################
+#####################################################################
+
+'''
 # enable LaTeX rendering
 init_printing(use_latex='mathjax')
 
@@ -54,14 +179,6 @@ def render_outer_product(p: str, q: str):
     )
     
     return Math(eq)
-
-
-
-
-#####################################################################
-######################## PAIRING CHANNELS  ##########################
-#####################################################################
-
 
 
 # spin singlet matrices
@@ -155,28 +272,15 @@ def spin_channels(a: str):
 	return triplet
 
 
-#####################################################################
-##################### PROJECTION COEFFICIENTS  ######################
-#####################################################################
-
-
-# define your physical basis labels (spin x orbital)
-basis = [r"\uparrow+", r"\uparrow-", r"\downarrow+", r"\downarrow-"]
-
-# build a 4×4 Matrix of Symbols f_{α,β}
-M = Matrix([[ Symbol(f"f_{{{i},{j}}}") 
-              for j in basis ] 
-            for i in basis ])
-
 
 # get and render in Latex the coefficients of the projection
-def coefficient_projection(M: Matrix, spin: str, orbital: str):
+def Pauli_matrices_projection(M: Matrix, spin: str, orbital: str):
 
 	# construct matrix fro projection
     Lambda = kronecker_product(paulis[spin], paulis[orbital])
     
     # compute coefficient f_A
-    f = simplify(trace(Lambda * M) / 4)
+    f = simplify( trace(Lambda * M) / 4 ); f = factor_terms(f)
     
     eq = rf"""
     f_{{{spin}{orbital}}}(\mathbf{{k}},\omega)
@@ -190,5 +294,11 @@ def coefficient_projection(M: Matrix, spin: str, orbital: str):
     """
     
     display(Math(eq))
+
+'''
+
+
+
+
 
 
