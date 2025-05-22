@@ -1,7 +1,112 @@
 import numpy as np
+from MTI_Second_Order import FMTI2_NeumannBC
+
 from IPython.display import Math, display
 from sympy import Symbol, Matrix, I, init_printing, simplify, factor_terms, trace, latex, kronecker_product, sqrt
 
+
+
+
+#####################################################################
+######################### WIGNER TRANSFORM ##########################
+#####################################################################
+
+
+# function for change of basis in MTI Green's function
+# from parity block-basis to spin-block basis
+def Change_Basis(gf):
+
+    g_new = [[gf[0][0], gf[0][2], gf[0][1], gf[0][3]],
+             [gf[2][0], gf[2][2], gf[2][1], gf[2][3]],
+             [gf[1][0], gf[1][2], gf[1][1], gf[1][3]],
+             [gf[3][0], gf[3][2], gf[3][1], gf[3][3]]]
+    
+    return np.array(g_new)
+
+
+
+# Evaluate discrete Fourier transform in relative coordinates
+# kZ0=center of mass of Cooper pair, Nzrel=number of discrete lattice points for z relative
+def DiscreteFT(d, Z0, kx, ky, L, mu, Delta, omega, Gamma, Nzrel=200, z0=0, C = -0.0068, D1 = 1.3, D2 = 19.6, A1 = 2.2, A2 = 4.1, M = 0.28, B1 = 10, B2 = 56.6, hbar=1., t=1.):
+    
+
+    # boundaries for |z1-z2|
+    max_zrel = max(d, d-Z0)
+    # discrete lattice for relative coordinates
+    zrelative = np.linspace(-max_zrel, max_zrel, Nzrel)    
+    
+    # lattice spacing for relative coordinates
+    a = abs( zrelative[1]-zrelative[2] ); N = len(zrelative)
+
+    # F2 in relative coordinates
+    F2_rc = []; 
+    # loop over relative coordinate z
+    for z in zrelative:
+    
+        # separate coordinates z1, z2
+        z1 = Z0 + 1/2*z; z2 = Z0 - 1/2*z
+    
+        # evaluate F2 as function of relative position z for fixed center of mass Z
+        F2_rc.append( FMTI2_NeumannBC(d=d, z=z1, Z=z2, z0=z0, kx=kx, ky=ky, L=L, mu=mu, Delta=Delta, omega=omega, Gamma=Gamma, C=C, D1=D1, D2=D2, A1=A1, A2=A2, M=M, B1=B1, B2=B2, hbar=hbar) )
+    
+    # array for F2 in relative coordinates (real space)
+    F2_rc = np.array(F2_rc)
+
+    # get array of k values
+    k = 2*np.pi * np.fft.fftshift(np.fft.fftfreq(N, d=a))
+    # evaluate the Wigner transform
+    F2_k = np.fft.fftshift(np.fft.fft(F2_rc))
+    
+    # change basis to the spin x orbital one
+    F2_k = np.array([Change_Basis(f) for f in F2_k])
+    
+    return k, F2_k
+
+
+
+# Evaluate the discrete Fourier transform reverting all the coordinates
+def DiscreteFT_Inverse(d, Z0, kx, ky, L, mu, Delta, omega, Gamma, Nzrel=200, z0=0, C = -0.0068, D1 = 1.3, D2 = 19.6, A1 = 2.2, A2 = 4.1, M = 0.28, B1 = 10, B2 = 56.6, hbar=1., t=1.):
+    
+
+    # boundaries for |z1-z2|
+    max_zrel = max(d, d-Z0)
+    # discrete lattice for relative coordinates
+    zrelative = np.linspace(-max_zrel, max_zrel, Nzrel)    
+    
+    # lattice spacing for relative coordinates
+    a = abs( zrelative[1]-zrelative[2] ); N = len(zrelative)
+
+    # F2 in relative coordinates
+    F2_rc = []; 
+    # loop over relative coordinate z
+    for z in zrelative:
+    
+        # separate coordinates z1, z2
+        z1 = Z0 + 1/2*z; z2 = Z0 - 1/2*z
+    
+        # evaluate F2 reversing all the coordinates
+        F2_rc.append( FMTI2_NeumannBC(d=d, z=z2, Z=z1, z0=z0, kx=-kx, ky=-ky, L=L, mu=mu, Delta=Delta, omega=-omega, Gamma=Gamma, C=C, D1=D1, D2=D2, A1=A1, A2=A2, M=M, B1=B1, B2=B2, hbar=hbar) )
+    
+    # array for F2 in relative coordinates (real space)
+    F2_rc = np.array(F2_rc)
+
+    # get array of k values
+    k = 2*np.pi * np.fft.fftshift(np.fft.fftfreq(N, d=a))
+    # evaluate the Wigner transform
+    F2_k = np.fft.fftshift(np.fft.fft(F2_rc))
+    
+    # change basis to the spin x orbital one
+    F2_k = np.array([Change_Basis(f) for f in F2_k])
+    
+    return k[::-1], F2_k
+
+
+
+
+    
+#####################################################################
+################## PROJECTION OVER SINGLET/TRIPLET ##################
+#####################################################################
 
 
 # define physical basis for pairing
@@ -11,13 +116,6 @@ basis = [r"\uparrow +", r"\uparrow -", r"\downarrow +", r"\downarrow -"]
 M = Matrix([[ Symbol(f"f_{{{i},{j}}}") 
               for j in basis ] 
             for i in basis ])
-            
-
-
-
-#####################################################################
-################## PROJECTION OVER SINGLET/TRIPLET ##################
-#####################################################################
 
 
 # enable LaTeX rendering
@@ -88,19 +186,14 @@ label_lambda = {
 # function which render the projection over spin singlet and triplet basis in Latex
 def render_projection(M: Matrix, spin: str, orbital: str):
 
-    # get the matrix to project the pairing
-    B_ab = kronecker_product(basis[spin], basis[orbital])
-    # project
-    c = simplify(trace(B_ab * M))
-
-    # form the two-qubit basis element
+	# form the two-qubit basis element
     B_ab = kronecker_product(basis[spin], basis[orbital])
     # project
     c = simplify( trace(B_ab.H * M)/trace(B_ab.H*B_ab) )
     
     # build & display MathJax
     eq = rf"""
-    f_{{{label_sigma[spin]},{label_lambda[orbital]}}}(\mathbf{{k}},\omega)
+    f_{{{label_sigma[spin]}, {label_lambda[spin]}}}(\mathbf{{k}},\omega)
     \;=\;
     \mathrm{{Tr}}\!\Bigl[
       ({basis_sigma[spin]} \otimes {basis_lambda[orbital]})\, \Delta_{{\mathrm{{ind}}}}(\mathbf{{k}},\omega)
@@ -124,7 +217,7 @@ def render_channel(spin: str, orbital: str):
     T = kronecker_product(A, B)
     
     eq = rf"""
-    {basis_sigma[spin]} \otimes {basis_lambda[orbital]}
+    {basis_sigma[spin]} \otimes {basis_lambda[orbital]} 
     \;=\;
     {latex(T)} \,,
     \qquad
@@ -158,8 +251,10 @@ def channel(spin: str, orbital: str):
 
 
 
-'''
 
+
+
+'''
 #####################################################################
 ################## PROJECTION OVER PAULI MATRICES  ##################
 #####################################################################
