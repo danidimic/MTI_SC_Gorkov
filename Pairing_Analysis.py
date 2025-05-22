@@ -64,41 +64,40 @@ def DiscreteFT(d, Z0, kx, ky, L, mu, Delta, omega, Gamma, Nzrel=200, z0=0, C = -
 
 
 
-# Evaluate the discrete Fourier transform reverting all the coordinates
-def DiscreteFT_Inverse(d, Z0, kx, ky, L, mu, Delta, omega, Gamma, Nzrel=200, z0=0, C = -0.0068, D1 = 1.3, D2 = 19.6, A1 = 2.2, A2 = 4.1, M = 0.28, B1 = 10, B2 = 56.6, hbar=1., t=1.):
+
+
+
+def DiscreteFT_v2(d, Z0, kx, ky, kz, L, mu, Delta, omega, Gamma, Nzrel=200, z0=0, C = -0.0068, D1 = 1.3, D2 = 19.6, A1 = 2.2, A2 = 4.1, M = 0.28, B1 = 10, B2 = 56.6, hbar=1., t=1.):
     
 
     # boundaries for |z1-z2|
     max_zrel = max(d, d-Z0)
     # discrete lattice for relative coordinates
-    zrelative = np.linspace(-max_zrel, max_zrel, Nzrel)    
+    zrelative = np.linspace(-max_zrel, max_zrel, Nzrel); N = Nzrel    
     
-    # lattice spacing for relative coordinates
-    a = abs( zrelative[1]-zrelative[2] ); N = len(zrelative)
-
     # F2 in relative coordinates
-    F2_rc = []; 
+    F2_k = np.zeros((4,4), dtype='complex'); n = 0
+    
     # loop over relative coordinate z
     for z in zrelative:
     
         # separate coordinates z1, z2
         z1 = Z0 + 1/2*z; z2 = Z0 - 1/2*z
     
-        # evaluate F2 reversing all the coordinates
-        F2_rc.append( FMTI2_NeumannBC(d=d, z=z2, Z=z1, z0=z0, kx=-kx, ky=-ky, L=L, mu=mu, Delta=Delta, omega=-omega, Gamma=Gamma, C=C, D1=D1, D2=D2, A1=A1, A2=A2, M=M, B1=B1, B2=B2, hbar=hbar) )
-    
-    # array for F2 in relative coordinates (real space)
-    F2_rc = np.array(F2_rc)
+        # evaluate F2 as function of relative position z for fixed center of mass Z
+        F2_rc = FMTI2_NeumannBC(d=d, z=z1, Z=z2, z0=z0, kx=kx, ky=ky, L=L, mu=mu, Delta=Delta, omega=omega, Gamma=Gamma, C=C, D1=D1, D2=D2, A1=A1, A2=A2, M=M, B1=B1, B2=B2, hbar=hbar)
+        
+        # sum and multiply by complex exponential
+        F2_k += np.exp( -2*np.pi*1j * kz * float(n/N) ) * F2_rc
+        
+        # increase n
+        n += 1
+        
+    return F2_k
 
-    # get array of k values
-    k = 2*np.pi * np.fft.fftshift(np.fft.fftfreq(N, d=a))
-    # evaluate the Wigner transform
-    F2_k = np.fft.fftshift(np.fft.fft(F2_rc))
-    
-    # change basis to the spin x orbital one
-    F2_k = np.array([Change_Basis(f) for f in F2_k])
-    
-    return k[::-1], F2_k
+
+
+
 
 
 
