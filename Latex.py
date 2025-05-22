@@ -1,3 +1,4 @@
+import numpy as np
 from IPython.display import Math, display
 from sympy import Symbol, Matrix, I, init_printing, simplify, factor_terms, trace, latex, kronecker_product, sqrt
 
@@ -35,7 +36,16 @@ basis = {
     '11':   (s0 + sz)/2,
     '22':   (s0 - sz)/2,
     'sym':  sx/sqrt(2),
-    'asym': -I*sy/sqrt(2)
+    'asym': I*sy/sqrt(2)
+}
+
+
+# convert basis into dictionary of numpy arrays
+basis_np = {
+    '11': np.matrix( basis['11'].tolist(), dtype=complex ),
+    '22': np.matrix( basis['22'].tolist(), dtype=complex ),
+    'sym': np.matrix( basis['sym'].tolist(), dtype=complex ),
+    'asym': np.matrix( basis['asym'].tolist(), dtype=complex ),
 }
 
 
@@ -46,6 +56,7 @@ basis_sigma = {
     'sym':  r"\sigma_{(\uparrow\downarrow+\downarrow\uparrow)}",
     'asym': r"\sigma_{(\downarrow\uparrow-\uparrow\downarrow)}"
 }
+
 
 # labels for projection
 label_sigma = {
@@ -74,8 +85,8 @@ label_lambda = {
 
 
 
-# define projection over spin singlet and triplet basis
-def singlet_triplet_projection(M: Matrix, spin: str, orbital: str):
+# function which render the projection over spin singlet and triplet basis in Latex
+def render_projection(M: Matrix, spin: str, orbital: str):
 
     # get the matrix to project the pairing
     B_ab = kronecker_product(basis[spin], basis[orbital])
@@ -85,7 +96,8 @@ def singlet_triplet_projection(M: Matrix, spin: str, orbital: str):
     # form the two-qubit basis element
     B_ab = kronecker_product(basis[spin], basis[orbital])
     # project
-    c = simplify(trace(B_ab * M))
+    c = simplify( trace(B_ab.H * M)/trace(B_ab.H*B_ab) )
+    
     # build & display MathJax
     eq = rf"""
     f_{{{label_sigma[spin]},{label_lambda[orbital]}}}(\mathbf{{k}},\omega)
@@ -101,8 +113,8 @@ def singlet_triplet_projection(M: Matrix, spin: str, orbital: str):
 
 
 
-# function which render the matrix corresponding to different channels
-def pairing_channels(spin: str, orbital: str):
+# function which render the matrix corresponding to different channels in Latex
+def render_channel(spin: str, orbital: str):
 
     # get spin matrix
     A = basis[spin]
@@ -114,19 +126,45 @@ def pairing_channels(spin: str, orbital: str):
     eq = rf"""
     {basis_sigma[spin]} \otimes {basis_lambda[orbital]}
     \;=\;
-    {latex(T)}
+    {latex(T)} \,,
+    \qquad
+    \left( {basis_sigma[spin]} \otimes {basis_lambda[orbital]} \right)^\dagger 
+    \;=\;
+    {latex(T.H)}
     """
     display(Math(eq))
 
 
 
+# project the pairing F over one selected channel
+def projection(Delta, spin: str, orbital: str):
 
+    # transform F into np.matrix
+    Delta = np.matrix(Delta)
+    # get the matrix to use for the projection
+    Lambda_A = np.matrix( np.kron(basis_np[spin], basis_np[orbital]) )
+
+    return np.trace(Lambda_A.H @ Delta) / np.trace(Lambda_A.H @ Lambda_A)
+
+
+
+# project the pairing F over one selected channel
+def channel(spin: str, orbital: str):
+
+    Lambda_A = np.kron(basis_np[spin], basis_np[orbital])
+    return Lambda_A
+
+
+
+
+
+'''
 
 #####################################################################
 ################## PROJECTION OVER PAULI MATRICES  ##################
 #####################################################################
 
-'''
+
 # enable LaTeX rendering
 init_printing(use_latex='mathjax')
 
