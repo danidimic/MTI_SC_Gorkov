@@ -8,6 +8,38 @@ from SC_Gorkov_Equation import GSC_matrix, FSC_matrix
 params=dict(C = -0.0068, D1 = 1.3, D2 = 19.6, A1 = 2.2, A2 = 4.1, M = 0.28, B1 = 10, B2 = 56.6)
 
 
+# function for change of basis in MTI Green's function
+# from parity block-basis to spin-block basis
+def Change_Basis(gf):
+
+    g_new = [[gf[0][0], gf[0][2], gf[0][1], gf[0][3]],
+             [gf[2][0], gf[2][2], gf[2][1], gf[2][3]],
+             [gf[1][0], gf[1][2], gf[1][1], gf[1][3]],
+             [gf[3][0], gf[3][2], gf[3][1], gf[3][3]]]
+    
+    return np.array(g_new)
+
+
+# function that extract the four 2x2 blocks that make up the pairing matrix
+def Block_Decomposition(f):
+
+	f00 = f[0:2, 0:2]
+	f01 = f[0:2, 2:4]
+	f10 = f[2:4, 0:2]
+	f11 = f[2:4, 2:4]
+	
+	return f00, f01, f10, f11
+
+
+
+# function that exchange the off-diagonal blocks
+def Block_Reverse(f):
+
+	# extract the 4 blocks 
+	f00, f01, f10, f11 = Block_Decomposition(f)
+	
+	return np.block([[f00, f10],[f01, f11]])
+
 
 
 #######################################################
@@ -48,45 +80,52 @@ def FMTI2_NeumannBC(d, z, Z, z0, kx, ky, L, mu, Delta, omega, Gamma, C = -0.0068
 
 
 
+#  Function that evaluates the F2-MTI in relative coordinates Z0 and zrel
+def FMTI2_Relative_Coordinates(d, Z0, zrel, kx, ky, L, mu, Delta, omega, Gamma, z0=0, C = -0.0068, D1 = 1.3, D2 = 19.6, A1 = 2.2, A2 = 4.1, M = 0.28, B1 = 10, B2 = 56.6, hbar=1., t=1.):
+
+    # separate coordinates z1, z2
+    z1 = Z0 + 1/2*zrel; z2 = Z0 - 1/2*zrel
+
+    return FMTI2_NeumannBC(d=d, z=z1, Z=z2, z0=z0, kx=kx, ky=ky, L=L, mu=mu, Delta=Delta, omega=omega, Gamma=Gamma, C=C, D1=D1, D2=D2, A1=A1, A2=A2, M=M, B1=B1, B2=B2, hbar=hbar)
 
 
-#######################################################
-############ DISCRETE FOURIER TRANSFORM ###############
-#######################################################
+
+
+
+#####################################################################
+######################### WIGNER TRANSFORM ##########################
+#####################################################################
 
 
 # Evaluate discrete Fourier transform in relative coordinates
-# zrelative=lattice of relative distances z1-z2; # Z0=center of mass of Cooper pair
-def DiscreteFT(zrelative, Z0, d, z0, kx, ky, L, mu, Delta, omega, Gamma, C = -0.0068, D1 = 1.3, D2 = 19.6, A1 = 2.2, A2 = 4.1, M = 0.28, B1 = 10, B2 = 56.6, hbar=1., t=1.):
+# kZ0=center of mass of Cooper pair, Nzrel=number of discrete lattice points for z relative
+def FMTI2_Wigner_Transform(d, Z0, k, kx, ky, L, mu, Delta, omega, Gamma, N=199, z0=0, C = -0.0068, D1 = 1.3, D2 = 19.6, A1 = 2.2, A2 = 4.1, M = 0.28, B1 = 10, B2 = 56.6, hbar=1., t=1.):
+    
+	# boundaries for |z1-z2|
+	max_zrel = max(d-Z0, Z0)
+	# discrete lattice for relative coordinates
+	zrelative = np.linspace(-max_zrel, max_zrel, N)
+    
+	# zero matrix for Wigner transform
+	F2_k = np.zeros((4,4), dtype='complex')
+    
+	# loop over relative coordinate z
+	for z in zrelative:
+    
+		# evaluate F2 in relative coordinates
+		F2_rc = FMTI2_Relative_Coordinates(d=d, Z0=Z0, zrel=z, kx=kx, ky=ky,  L=L, mu=mu, Delta=Delta, omega=omega, Gamma=Gamma, z0=z0, C=C, D1=D1, D2=D2, A1=A1, A2=A2, M=M, B1=B1, B2=B2, hbar=hbar, t=t)
 
-    # lattice spacing for relative coordinates
-    a = abs( zrelative[1]-zrelative[2] ); N = len(zrelative)
-
-    # F2 in relative coordinates
-    F2_rc = []; 
-    # loop over relative coordinate z
-    for z in zrelative:
-    
-        # separate coordinates z1, z2
-        z1 = Z0 + 1/2*z; z2 = Z0 - 1/2*z
-    
-        # evaluate F2 as function of relative position z for fixed center of mass Z
-        F2_rc.append( FMTI2_NeumannBC(d=d, z=z1, Z=z2, z0=z0, kx=kx, ky=ky, L=L, mu=mu, Delta=Delta, omega=omega, Gamma=Gamma, C=C, D1=D1, D2=D2, A1=A1, A2=A2, M=M, B1=B1, B2=B2, hbar=hbar) )
-    
-    # array for F2 in relative coordinates
-    F2_rc = np.array(F2_rc)
-    
-    # shift origin in z=0
-    F2_rc = np.fft.fftshift(F2_rc)
-    # evaluate discrete Fourier transform
-    F2_k = np.fft.fft(F2_rc)
-    # shift origin in k=0
-    F2_k = np.fft.fftshift(F2_k)
-    
-    # corresponding k values
-    k = 2 * np.pi * np.fft.fftshift(np.fft.fftfreq(N, d=a))
-    
-    return k, F2_k
+		# exponential factor
+		e = np.exp(-1j*k*z)
+		
+		# loop over components
+		for i in range(4):
+			for j in range(4):
+        		
+				# sum to build Wigner transform
+				F2_k[i,j] += e * F2_rc[i,j]
+	
+	return F2_k
 
 
 
