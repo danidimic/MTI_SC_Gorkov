@@ -1,6 +1,8 @@
 import cmath
 import numpy as np
 
+from MTI_Second_Order import FMTI2_NeumannBC, FMTI2_Relative_Coordinates, FMTI2_Wigner_Transform, Change_Basis
+
 from IPython.display import Math, display
 from sympy import Symbol, Matrix, I, init_printing, simplify, factor_terms, trace, latex, kronecker_product, sqrt
 
@@ -8,7 +10,7 @@ from sympy import Symbol, Matrix, I, init_printing, simplify, factor_terms, trac
 
 
 #####################################################################
-################## PROJECTION OVER SINGLET/TRIPLET ##################
+################### PROJECTION OVER SPIN/ORBITAL ####################
 #####################################################################
 
 
@@ -42,7 +44,7 @@ basis = {
 
 
 # convert basis into dictionary of numpy arrays
-basis_np = {
+basis_numpy = {
     '11': np.matrix( basis['11'].tolist(), dtype=complex ),
     '22': np.matrix( basis['22'].tolist(), dtype=complex ),
     'sym': np.matrix( basis['sym'].tolist(), dtype=complex ),
@@ -87,7 +89,7 @@ label_lambda = {
 
 
 # function which render the projection over spin singlet and triplet basis in Latex
-def render_projection(M: Matrix, spin: str, orbital: str):
+def Render_Projection(M: Matrix, spin: str, orbital: str):
 
 	# form the two-qubit basis element
     B_ab = kronecker_product(basis[spin], basis[orbital])
@@ -96,7 +98,7 @@ def render_projection(M: Matrix, spin: str, orbital: str):
     
     # build & display MathJax
     eq = rf"""
-    f_{{{label_sigma[spin]}, {label_lambda[spin]}}}(\mathbf{{k}},\omega)
+    f_{{{label_sigma[spin]}, {label_lambda[orbital]}}}(\mathbf{{k}},\omega)
     \;=\;
     \mathrm{{Tr}}\!\Bigl[
       ({basis_sigma[spin]} \otimes {basis_lambda[orbital]})\, \Delta_{{\mathrm{{ind}}}}(\mathbf{{k}},\omega)
@@ -110,7 +112,7 @@ def render_projection(M: Matrix, spin: str, orbital: str):
 
 
 # function which render the matrix corresponding to different channels in Latex
-def render_channel(spin: str, orbital: str):
+def Render_Channel(spin: str, orbital: str):
 
     # get spin matrix
     A = basis[spin]
@@ -133,28 +135,107 @@ def render_channel(spin: str, orbital: str):
 
 
 # project the pairing F over one selected channel
-def projection(Delta, spin: str, orbital: str):
+def Pairing_Projection(Delta, spin: str, orbital: str):
 
     # transform F into np.matrix
     Delta = np.matrix(Delta)
     # get the matrix to use for the projection
-    Lambda_A = np.matrix( np.kron(basis_np[spin], basis_np[orbital]) )
+    Lambda_A = np.matrix( np.kron(basis_numpy[spin], basis_numpy[orbital]) )
 
     return np.trace(Lambda_A.H @ Delta) / np.trace(Lambda_A.H @ Lambda_A)
 
 
 
-# project the pairing F over one selected channel
-def channel(spin: str, orbital: str):
+# get the matrix corresponding to given channel
+def Pairing_Channel(spin: str, orbital: str):
 
-    Lambda_A = np.kron(basis_np[spin], basis_np[orbital])
+    Lambda_A = np.kron(basis_numpy[spin], basis_numpy[orbital])
     return Lambda_A
 
 
 
 
+#####################################################################
+######################## SYMMETRY ANALYSIS  #########################
+#####################################################################
 
 
+# Function that evaluates the 4 symmetric components in frequency and momentum
+def Symmetric_Components(d, Z0, k, kx, ky, L, mu, Delta, omega, Gamma, N=199, z0=0, C = -0.0068, D1 = 1.3, D2 = 19.6, A1 = 2.2, A2 = 4.1, M = 0.28, B1 = 10, B2 = 56.6, hbar=1., t=1.):
+
+	### Mind the change of basis to have the pairing in spin x orbital space !!! ###
+	
+	# evaluate the pairing at the given parameters
+	F = Change_Basis( FMTI2_Wigner_Transform(d=d, Z0=Z0, k=k, kx=kx, ky=ky, L=L, mu=mu, Delta=Delta, omega=omega, Gamma=Gamma, N=N, z0=z0, C=C, D1=D1, D2=D2, A1=A1, A2=A2, M=M, B1=B1, B2=B2, hbar=hbar, t=t) )
+
+	# evaluate the pairing reverting the momentum
+	F_k = Change_Basis( FMTI2_Wigner_Transform(d=d, Z0=Z0, k=-k, kx=-kx, ky=-ky, L=L, mu=mu, Delta=Delta, omega=omega, Gamma=Gamma, N=N, z0=z0, C=C, D1=D1, D2=D2, A1=A1, A2=A2, M=M, B1=B1, B2=B2, hbar=hbar, t=t) )
+	
+	# evaluate the pairing reverting the frequency
+	F_w = Change_Basis( FMTI2_Wigner_Transform(d=d, Z0=Z0, k=k, kx=kx, ky=ky, L=L, mu=mu, Delta=Delta, omega=-omega, Gamma=Gamma, N=N, z0=z0, C=C, D1=D1, D2=D2, A1=A1, A2=A2, M=M, B1=B1, B2=B2, hbar=hbar, t=t) )
+
+	# evaluate the pairing reverting frequency and momentum
+	F_kw = Change_Basis( FMTI2_Wigner_Transform(d=d, Z0=Z0, k=-k, kx=-kx, ky=-ky, L=L, mu=mu, Delta=Delta, omega=-omega, Gamma=Gamma, N=N, z0=z0, C=C, D1=D1, D2=D2, A1=A1, A2=A2, M=M, B1=B1, B2=B2, hbar=hbar, t=t) )
+
+
+	# even energy, even momentum
+	ee = 1./4. * (F + F_k + F_w + F_kw)
+	
+	# even energy, odd momentum
+	eo = 1./4. * (F - F_k + F_w - F_kw)
+	
+	# odd energy, even momentum
+	oe = 1./4. * (F + F_k - F_w - F_kw)
+	
+	# odd energy, odd momentum
+	oo = 1./4. * (F - F_k - F_w + F_kw)	
+
+
+	# save components and full pairing
+	symmetrized_pairing = {
+		# even in energy
+		'even': {
+			'even': ee,
+			'odd':  eo
+		},
+		# odd in energy
+		'odd': {
+			'even': oe,
+			'odd':  oo
+		},
+		
+		# full pairing matrix
+		'total': F
+	}
+	
+	return symmetrized_pairing
+
+
+
+# Function which acces a specified component and channel in symmetrized pairing
+def Get_Symmetry_Channel(symmetrized_pairing, frequency: str, momentum: str, spin: str, orbital: str):
+
+	# extract component with given symmetry in frequency/momentum
+	F_sym = symmetrized_pairing[frequency][momentum]
+	
+	# project over spin/orbital channel 
+	f_A_sym = Pairing_Projection(Delta=F_sym, spin=spin, orbital=orbital)
+	
+	return f_A_sym
+    
+
+
+# Function which return the total component and project over spin/orbital
+def Get_Total_Component(symmetrized_pairing, spin: str, orbital: str):
+
+	# get total pairing matrix
+	F_tot = symmetrized_pairing['total']
+	
+	# project over spin/orbital channel 
+	f_A = Pairing_Projection(Delta=F_tot, spin=spin, orbital=orbital)
+	
+	return f_A
+	
 
 
 '''
