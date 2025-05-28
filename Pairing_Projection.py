@@ -1,7 +1,7 @@
 import cmath
 import numpy as np
 
-from MTI_Second_Order import FMTI2_NeumannBC, FMTI2_Relative_Coordinates, FMTI2_Wigner_Transform, Change_Basis
+from MTI_Second_Order import FMTI2_NeumannBC, FMTI2_Relative_Coordinates, FMTI2_Wigner_Transform, Change_Basis, Block_Decomposition, Block_Reverse
 
 from IPython.display import Math, display
 from sympy import Symbol, Matrix, I, init_printing, simplify, factor_terms, trace, latex, kronecker_product, sqrt
@@ -9,8 +9,9 @@ from sympy import Symbol, Matrix, I, init_printing, simplify, factor_terms, trac
 
 
 
+
 #####################################################################
-################### PROJECTION OVER SPIN/ORBITAL ####################
+##################### PROJECTION OVER CHANNELS ######################
 #####################################################################
 
 
@@ -156,7 +157,7 @@ def Pairing_Channel(spin: str, orbital: str):
 
 
 #####################################################################
-######################## SYMMETRY ANALYSIS  #########################
+######################### CHANNEL SYMMETRY ##########################
 #####################################################################
 
 
@@ -238,183 +239,74 @@ def Get_Total_Component(symmetrized_pairing, spin: str, orbital: str):
 	
 
 
-'''
 #####################################################################
-################## PROJECTION OVER PAULI MATRICES  ##################
+######################### OVERALL SYMMETRY ##########################
 #####################################################################
 
 
-# enable LaTeX rendering
-init_printing(use_latex='mathjax')
 
+# function that returns the spin singlet/triplet overall pairing
+def Spin_Symmetry(d, Z0, k, kx, ky, L, mu, Delta, omega, Gamma, N=199, z0=0, C = -0.0068, D1 = 1.3, D2 = 19.6, A1 = 2.2, A2 = 4.1, M = 0.28, B1 = 10, B2 = 56.6, hbar=1., t=1.):
 
-# define the Pauli matrices using sympy.Matrix
-paulis = {
-    '0': Matrix([[1, 0],
-                 [0, 1]]),
-    'x': Matrix([[0, 1],
-                 [1, 0]]),
-    'y': Matrix([[0, -I],
-                 [I,  0]]),
-    'z': Matrix([[1,  0],
-                 [0, -1]])
-}
-
-
-# helper to get the LaTeX name of each spin Pauli matrix
-sigma_name = {
-    '0': r"\sigma_0",
-    'x': r"\sigma_x",
-    'y': r"\sigma_y",
-    'z': r"\sigma_z"
-}
-
-# helper to get the LaTeX name of each spin Pauli matrix
-lambda_name = {
-    '0': r"\lambda_0",
-    'x': r"\lambda_x",
-    'y': r"\lambda_y",
-    'z': r"\lambda_z"
-}
-
-
-
-# compute and display the outer product
-def render_outer_product(p: str, q: str):
-
-    # matrix in spin space
-    A = paulis[p]
-    # matrix in orbital space
-    B = paulis[q]
-    # use kronecker_product
-    T = kronecker_product(A, B)
-    
-    # build and display the LaTeX equation
-    eq = (
-        rf"{sigma_name[p]} \,\otimes\, {lambda_name[q]}"
-        rf" \;=\; {latex(T)}"
-    )
-    
-    return Math(eq)
-
-
-# spin singlet matrices
-def spin_singlet_channels():
-
-	# get y matrix in spin space
-	A = paulis['y']
-
-	singlet = []
-	# loop over orbital Pauli matrices
-	for b in ['0', 'x', 'y', 'z']:
-    
-		# get matrix in orbital space
-		B = paulis[b]
-		# evaluate outer product
-		T = kronecker_product(A, B)
-
-		# build and display the LaTeX equation
-		eq = (
-			rf" \Lambda^{{\mathrm{{singlet}}}}_{{{b}}} \;=\;"
-			rf"{sigma_name['y']} \,\otimes\, {lambda_name[b]}"
-			rf" \;=\; {latex(T)}"
-		)
-		
-		# append to singlet
-		singlet.append(Math(eq))		
-
-	return singlet
-
-
-
-# spin triplet matrices
-def spin_triplet_channels(a: str):
-
-	# get symmetric matrix in spin space
-	A = paulis[a]
-
-	triplet = []
-	# loop over orbital Pauli matrices
-	for b in ['0', 'x', 'y', 'z']:
-    
-		# get matrix in orbital space
-		B = paulis[b]
-		# evaluate outer product
-		T = kronecker_product(A, B)
-
-		# build and display the LaTeX equation
-		eq = (
-			rf" \Lambda^{{\mathrm{{triplet}}}}_{{{b}}} \;=\;"
-			rf"{sigma_name[a]} \,\otimes\, {lambda_name[b]}"
-			rf" \;=\; {latex(T)}"
-		)
-		
-		# append to singlet
-		triplet.append(Math(eq))		
-
-	return triplet
-
-
-
-# spin triplet or singlet matrices
-def spin_channels(a: str):
-
-	# get symmetric matrix in spin space
-	A = paulis[a]
+	### Mind the change of basis to have the pairing in spin x orbital space !!! ###
 	
-	if a == 'y':
-		spin = 'singlet'
-	else:
-		spin = 'triplet'
+	# evaluate the pairing at the given parameters
+	F = Change_Basis( FMTI2_Wigner_Transform(d=d, Z0=Z0, k=k, kx=kx, ky=ky, L=L, mu=mu, Delta=Delta, omega=omega, Gamma=Gamma, N=N, z0=z0, C=C, D1=D1, D2=D2, A1=A1, A2=A2, M=M, B1=B1, B2=B2, hbar=hbar, t=t) )
+	
+	# swap the spin keeping same orbitals
+	F_swap = Block_Reverse(F)
+	
+	# define spin singlet
+	F_singlet = 0.5 * ( F - F_swap )
 
-	triplet = []
-	# loop over orbital Pauli matrices
-	for b in ['0', 'x', 'y', 'z']:
-    
-		# get matrix in orbital space
-		B = paulis[b]
-		# evaluate outer product
-		T = kronecker_product(A, B)
-
-		# build and display the LaTeX equation
-		eq = (
-			rf" \Lambda^{{ {spin} }}_{{{b}}} \;=\;"
-			rf"{sigma_name[a]} \,\otimes\, {lambda_name[b]}"
-			rf" \;=\; {latex(T)}"
-		)
-		
-		# append to singlet
-		triplet.append(Math(eq))		
-
-	return triplet
+	# define spin triplet
+	F_triplet = 0.5 * ( F + F_swap )
+	
+	return np.linalg.norm(F_singlet), np.linalg.norm(F_triplet)
 
 
 
-# get and render in Latex the coefficients of the projection
-def Pauli_matrices_projection(M: Matrix, spin: str, orbital: str):
+# function that returns the even/odd parity overall pairing
+def Momentum_Symmetry(d, Z0, k, kx, ky, L, mu, Delta, omega, Gamma, N=199, z0=0, C = -0.0068, D1 = 1.3, D2 = 19.6, A1 = 2.2, A2 = 4.1, M = 0.28, B1 = 10, B2 = 56.6, hbar=1., t=1.):
 
-	# construct matrix fro projection
-    Lambda = kronecker_product(paulis[spin], paulis[orbital])
-    
-    # compute coefficient f_A
-    f = simplify( trace(Lambda * M) / 4 ); f = factor_terms(f)
-    
-    eq = rf"""
-    f_{{{spin}{orbital}}}(\mathbf{{k}},\omega)
-    \;=\;
-    \frac{{1}}{{4}}\,
-    \mathrm{{Tr}}\!\Bigl[\,
-      ({sigma_name[spin]}\otimes{lambda_name[orbital]})\,\Delta_{{\mathrm{{ind}}}}(\mathbf{{k}},\omega)
-    \Bigr]
-    \;=\;
-    {latex(f)}
-    """
-    
-    display(Math(eq))
+	### Mind the change of basis to have the pairing in spin x orbital space !!! ###
+	
+	# evaluate the pairing at the given parameters
+	F = Change_Basis( FMTI2_Wigner_Transform(d=d, Z0=Z0, k=k, kx=kx, ky=ky, L=L, mu=mu, Delta=Delta, omega=omega, Gamma=Gamma, N=N, z0=z0, C=C, D1=D1, D2=D2, A1=A1, A2=A2, M=M, B1=B1, B2=B2, hbar=hbar, t=t) )
+	
+	# evaluate the pairing reverting the momentum
+	F_inverse = Change_Basis( FMTI2_Wigner_Transform(d=d, Z0=Z0, k=-k, kx=-kx, ky=-ky, L=L, mu=mu, Delta=Delta, omega=omega, Gamma=Gamma, N=N, z0=z0, C=C, D1=D1, D2=D2, A1=A1, A2=A2, M=M, B1=B1, B2=B2, hbar=hbar, t=t) )
+	
+	
+	# define the even-parity components 
+	F_even = 0.5 * ( F + F_inverse )	
 
-'''
+	# define the odd-parity components 
+	F_odd = 0.5 * ( F - F_inverse )
+	
+	return np.linalg.norm(F_even), np.linalg.norm(F_odd)
 
 
+
+# function that returns the even/odd parity overall pairing
+def Frequency_Symmetry(d, Z0, k, kx, ky, L, mu, Delta, omega, Gamma, N=199, z0=0, C = -0.0068, D1 = 1.3, D2 = 19.6, A1 = 2.2, A2 = 4.1, M = 0.28, B1 = 10, B2 = 56.6, hbar=1., t=1.):
+
+	### Mind the change of basis to have the pairing in spin x orbital space !!! ###
+	
+	# evaluate the pairing at the given parameters
+	F = Change_Basis( FMTI2_Wigner_Transform(d=d, Z0=Z0, k=k, kx=kx, ky=ky, L=L, mu=mu, Delta=Delta, omega=omega, Gamma=Gamma, N=N, z0=z0, C=C, D1=D1, D2=D2, A1=A1, A2=A2, M=M, B1=B1, B2=B2, hbar=hbar, t=t) )
+	
+	# evaluate the pairing reverting the frequency
+	F_inverse = Change_Basis( FMTI2_Wigner_Transform(d=d, Z0=Z0, k=k, kx=kx, ky=ky, L=L, mu=mu, Delta=Delta, omega=-omega, Gamma=Gamma, N=N, z0=z0, C=C, D1=D1, D2=D2, A1=A1, A2=A2, M=M, B1=B1, B2=B2, hbar=hbar, t=t) )
+	
+	
+	# define the even-parity components 
+	F_even = 0.5 * ( F + F_inverse )	
+
+	# define the odd-parity components 
+	F_odd = 0.5 * ( F - F_inverse )
+	
+	return np.linalg.norm(F_even), np.linalg.norm(F_odd)
 
 
 
