@@ -103,8 +103,11 @@ def FMTI2_Wigner_Transform(d, Z0, k, kx, ky, L, mu, Delta, omega, Gamma, N=199, 
     
 	# boundaries for |z1-z2|
 	max_zrel = max(d-Z0, Z0)
+	
+	z_min = max(-2*Z0, 2*(Z0-d)); z_max = min(2*Z0, 2*(d-Z0) )
+	
 	# discrete lattice for relative coordinates
-	zrelative = np.linspace(-max_zrel, max_zrel, N)
+	zrelative = np.linspace(z_min, z_max, N)
     
 	# zero matrix for Wigner transform
 	F2_k = np.zeros((4,4), dtype='complex')
