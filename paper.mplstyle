@@ -2,7 +2,7 @@
 
 # Set color cycle
 # Set line style as well for black and white graphs
-axes.prop_cycle : (cycler('color', ['k', 'tab:red', 'tab:blue', 'tab:green']) + cycler('ls', ['-', '--', ':', '-.']))
+#axes.prop_cycle : (cycler('color', ['k', 'tab:red', 'tab:blue', 'tab:green']) + cycler('ls', ['-', '--', ':', '-.']))
 
 # Set default figure size
 figure.dpi : 600

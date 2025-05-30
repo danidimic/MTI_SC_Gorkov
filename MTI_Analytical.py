@@ -1,4 +1,7 @@
+import math
 import numpy as np
+
+from SC_Gorkov_Equation import FSC_matrix
 
 # Hamiltonian parameters
 params=dict(C = -0.0068, D1 = 1.3, D2 = 19.6, A1 = 2.2, A2 = 4.1, M = 0.28, B1 = 10, B2 = 56.6)
