@@ -102,12 +102,13 @@ def FMTI2_Relative_Coordinates(d, Z0, zrel, kx, ky, L, mu, Delta, omega, Gamma, 
 def FMTI2_Wigner_Transform(d, Z0, k, kx, ky, L, mu, Delta, omega, Gamma, N=199, z0=0, C = -0.0068, D1 = 1.3, D2 = 19.6, A1 = 2.2, A2 = 4.1, M = 0.28, B1 = 10, B2 = 56.6, hbar=1., t=1.):
     
 	# boundaries for |z1-z2|
-	max_zrel = max(d-Z0, Z0)
-	
 	z_min = max(-2*Z0, 2*(Z0-d)); z_max = min(2*Z0, 2*(d-Z0) )
 	
 	# discrete lattice for relative coordinates
-	zrelative = np.linspace(z_min, z_max, N)
+	if z_min != z_max:
+		zrelative = np.linspace(z_min, z_max, N)
+	else:
+		zrelative = np.array([0])
     
 	# zero matrix for Wigner transform
 	F2_k = np.zeros((4,4), dtype='complex')
