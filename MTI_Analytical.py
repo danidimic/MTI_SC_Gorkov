@@ -171,3 +171,18 @@ def FMTI2_SemiInfinite(d, z, Z, L, mu, Delta, omega, Gamma, C = -0.0068, D1 = 1.
     FSC = FSC_matrix(z=0., kx=0., ky=0., mu=mu, Delta=Delta, w=omega, t=t, hbar=hbar)
     
     return (np.transpose(GMTIz) @ np.conj(Gamma) @ FSC @ Gamma.H @ GMTIZ).A
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
