@@ -34,18 +34,32 @@ sx = Matrix([[0,1],[1,0]])
 sy = Matrix([[0,-I],[I,0]])
 sz = Matrix([[1,0],[0,-1]])
 
+'''
+# define the basis for the projection
+basis = {
+    's0': s0,
+    'sx': sx,
+    'sy': sy,
+    'sz': sz,
+    
+    't0': s0,
+    'tx': sx,
+    'ty': sy,
+    'tz': sz
+}
+'''
 
 # define the basis for the projection
 basis = {
-    's0': s0/sqrt(2),
+    's0': (s0 + sz)/2,
     'sx': sx/sqrt(2),
-    'sy': sy/sqrt(2),
-    'sz': sz/sqrt(2),
+    'sy': I*sy/sqrt(2),
+    'sz': (s0 - sz)/2,
     
-    't0': s0/sqrt(2),
+    't0': (s0 + sz)/2,
     'tx': sx/sqrt(2),
-    'ty': sy/sqrt(2),
-    'tz': sz/sqrt(2)
+    'ty': I*sy/sqrt(2),
+    'tz': (s0 - sz)/2
 }
 
 
@@ -64,34 +78,27 @@ basis_numpy = {
 }
 
 
-# define LaTeX for spin matrices
-basis_sigma = {
-    's0':   r"\sigma_0",
-    'sx':   r"\sigma_x",
-    'sy':  r"\sigma_y",
-    'sz':   r"\sigma_z"
-}
-
-
 # labels for projection
-label_sigma = {
-    's0':   r"\sigma_0",
-    'sx':   r"\sigma_x",
+label_latex = {
+    's0':  r"\sigma_0",
+    'sx':  r"\sigma_x",
     'sy':  r"\sigma_y",
-    'sz':   r"\sigma_z"
-}
-
-
-# define LaTeX for orbital matrices
-basis_lambda = {
+    'sz':  r"\sigma_z",
+    
     't0':   r"\tau_0",
     'tx':   r"\tau_x",
     'ty':   r"\tau_y",
     'tz':   r"\tau_z"
 }
 
-# labels for projection
-label_lambda = {
+
+# define LaTeX for matrices
+basis_latex = {
+    's0':  r"\sigma_0",
+    'sx':  r"\sigma_x",
+    'sy':  r"\sigma_y",
+    'sz':  r"\sigma_z",
+    
     't0':   r"\tau_0",
     'tx':   r"\tau_x",
     'ty':   r"\tau_y",
@@ -103,20 +110,24 @@ label_lambda = {
 # function which render the projection over spin singlet and triplet basis in Latex
 def Render_Projection(M: Matrix, spin: str, orbital: str):
 
-	# form the two-qubit basis element
-    B_ab = kronecker_product(basis[spin], basis[orbital])
-    # project
-    c = simplify( trace(B_ab.H * M) / trace(B_ab.H*B_ab) )
+    # get spin matrix
+    S = basis[spin] #* I*basis['sy']
+    # get orbital matrix
+    O = basis[orbital]
+    # evaluate tensor product
+    Lambda_A = kronecker_product(S,O)
+    
+    f_A = simplify( trace(Lambda_A.H * M) / trace(Lambda_A.H*Lambda_A) )
     
     # build & display MathJax
     eq = rf"""
-    f_{{{label_sigma[spin]}, {label_lambda[orbital]}}}(\mathbf{{k}},\omega)
+    f_{{{label_latex[spin]}, {label_latex[orbital]}}}(z)
     \;=\;
     \mathrm{{Tr}}\!\Bigl[
-      ({basis_sigma[spin]} \otimes {basis_lambda[orbital]})\, \Delta_{{\mathrm{{ind}}}}(\mathbf{{k}},\omega)
+      ({basis_latex[spin]} \otimes {basis_latex[orbital]})\, \Delta_{{\mathrm{{ind}}}}(z)
     \Bigr]
     \;=\;
-    {latex(c)}
+    {latex(f_A)}
     """
     
     display(Math(eq))
@@ -127,20 +138,20 @@ def Render_Projection(M: Matrix, spin: str, orbital: str):
 def Render_Channel(spin: str, orbital: str):
 
     # get spin matrix
-    A = basis[spin]
+    S = basis[spin] #* I*basis['sy']
     # get orbital matrix
-    B = basis[orbital]
+    O = basis[orbital]
     # evaluate tensor product
-    T = kronecker_product(A, B)
+    Lambda_A = simplify( kronecker_product(S,O) )
     
     eq = rf"""
-    {basis_sigma[spin]} \otimes {basis_lambda[orbital]} 
+    {basis_latex[spin]} \otimes {basis_latex[orbital]} 
     \;=\;
-    {latex(T)} \,,
+    {latex(Lambda_A)} \,,
     \qquad
-    \left( {basis_sigma[spin]} \otimes {basis_lambda[orbital]} \right)^\dagger 
+    \left( {basis_latex[spin]} \otimes {basis_latex[orbital]} \right)^\dagger 
     \;=\;
-    {latex(T.H)}
+    {latex(Lambda_A.H)}
     """
     display(Math(eq))
 
@@ -151,8 +162,13 @@ def Pairing_Projection(Delta, spin: str, orbital: str):
 
     # transform F into np.matrix
     Delta = np.matrix(Delta)
-    # get the matrix to use for the projection
-    Lambda_A = np.matrix( np.kron(basis_numpy[spin], basis_numpy[orbital]) )
+    
+    # get spin matrix
+    S = basis_numpy[spin] 
+    # get orbital matrix
+    O = basis_numpy[orbital]
+    # evaluate tensor product
+    Lambda_A = np.matrix( np.kron(S,O) )
     
     # check normalization
     #print( 'trace = ', str(round(np.trace(Lambda_A.H @ Lambda_A))) )
@@ -164,7 +180,13 @@ def Pairing_Projection(Delta, spin: str, orbital: str):
 # get the matrix corresponding to given channel
 def Pairing_Channel(spin: str, orbital: str):
 
-    Lambda_A = np.kron(basis_numpy[spin], basis_numpy[orbital])
+    # get spin matrix
+    S = basis_numpy[spin] 
+    # get orbital matrix
+    O = basis_numpy[orbital]
+    # evaluate tensor product
+    Lambda_A = np.matrix( np.kron(S,O) )
+    
     return Lambda_A
 
 
