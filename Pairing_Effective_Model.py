@@ -34,7 +34,8 @@ sx = Matrix([[0,1],[1,0]])
 sy = Matrix([[0,-I],[I,0]])
 sz = Matrix([[1,0],[0,-1]])
 
-'''
+
+
 # define the basis for the projection
 basis = {
     's0': s0,
@@ -47,21 +48,6 @@ basis = {
     'ty': sy,
     'tz': sz
 }
-'''
-
-# define the basis for the projection
-basis = {
-    's0': (s0 + sz)/2,
-    'sx': sx/sqrt(2),
-    'sy': I*sy/sqrt(2),
-    'sz': (s0 - sz)/2,
-    
-    't0': (s0 + sz)/2,
-    'tx': sx/sqrt(2),
-    'ty': I*sy/sqrt(2),
-    'tz': (s0 - sz)/2
-}
-
 
 
 # convert basis into dictionary of numpy arrays
@@ -71,10 +57,10 @@ basis_numpy = {
     'sy': np.matrix( basis['sy'].tolist(), dtype=complex ),
     'sz': np.matrix( basis['sz'].tolist(), dtype=complex ),
     
-    't0': np.matrix( basis['s0'].tolist(), dtype=complex ),
-    'tx': np.matrix( basis['sx'].tolist(), dtype=complex ),
-    'ty': np.matrix( basis['sy'].tolist(), dtype=complex ),
-    'tz': np.matrix( basis['sz'].tolist(), dtype=complex )    
+    't0': np.matrix( basis['t0'].tolist(), dtype=complex ),
+    'tx': np.matrix( basis['tx'].tolist(), dtype=complex ),
+    'ty': np.matrix( basis['ty'].tolist(), dtype=complex ),
+    'tz': np.matrix( basis['tz'].tolist(), dtype=complex )    
 }
 
 
@@ -92,6 +78,7 @@ label_latex = {
 }
 
 
+'''
 # define LaTeX for matrices
 basis_latex = {
     's0':  r"\sigma_0",
@@ -104,6 +91,7 @@ basis_latex = {
     'ty':   r"\tau_y",
     'tz':   r"\tau_z"
 }
+'''
 
 
 
@@ -111,7 +99,7 @@ basis_latex = {
 def Render_Projection(M: Matrix, spin: str, orbital: str):
 
     # get spin matrix
-    S = basis[spin] #* I*basis['sy']
+    S = basis[spin]
     # get orbital matrix
     O = basis[orbital]
     # evaluate tensor product
@@ -124,7 +112,7 @@ def Render_Projection(M: Matrix, spin: str, orbital: str):
     f_{{{label_latex[spin]}, {label_latex[orbital]}}}(z)
     \;=\;
     \mathrm{{Tr}}\!\Bigl[
-      ({basis_latex[spin]} \otimes {basis_latex[orbital]})\, \Delta_{{\mathrm{{ind}}}}(z)
+      ({label_latex[spin]} \otimes {label_latex[orbital]})\, \Delta_{{\mathrm{{ind}}}}(z)
     \Bigr]
     \;=\;
     {latex(f_A)}
@@ -138,41 +126,36 @@ def Render_Projection(M: Matrix, spin: str, orbital: str):
 def Render_Channel(spin: str, orbital: str):
 
     # get spin matrix
-    S = basis[spin] #* I*basis['sy']
+    S = basis[spin]
     # get orbital matrix
     O = basis[orbital]
     # evaluate tensor product
     Lambda_A = simplify( kronecker_product(S,O) )
     
     eq = rf"""
-    {basis_latex[spin]} \otimes {basis_latex[orbital]} 
+    {label_latex[spin]} \otimes {label_latex[orbital]} 
     \;=\;
     {latex(Lambda_A)} \,,
     \qquad
-    \left( {basis_latex[spin]} \otimes {basis_latex[orbital]} \right)^\dagger 
+    \left( {label_latex[spin]} \otimes {label_latex[orbital]} \right)^T 
     \;=\;
-    {latex(Lambda_A.H)}
+    {latex(Lambda_A.T)}
     """
     display(Math(eq))
+
 
 
 
 # project the pairing F over one selected channel
 def Pairing_Projection(Delta, spin: str, orbital: str):
 
-    # transform F into np.matrix
-    Delta = np.matrix(Delta)
-    
     # get spin matrix
-    S = basis_numpy[spin] 
+    S = basis_numpy[spin]
     # get orbital matrix
     O = basis_numpy[orbital]
     # evaluate tensor product
     Lambda_A = np.matrix( np.kron(S,O) )
     
-    # check normalization
-    #print( 'trace = ', str(round(np.trace(Lambda_A.H @ Lambda_A))) )
-
     return np.trace(Lambda_A.H @ Delta) / np.trace(Lambda_A.H @ Lambda_A)
 
 
@@ -181,12 +164,81 @@ def Pairing_Projection(Delta, spin: str, orbital: str):
 def Pairing_Channel(spin: str, orbital: str):
 
     # get spin matrix
-    S = basis_numpy[spin] 
+    S = basis_numpy[spin]
     # get orbital matrix
     O = basis_numpy[orbital]
     # evaluate tensor product
     Lambda_A = np.matrix( np.kron(S,O) )
     
     return Lambda_A
+
+
+# get all coefficients from projection
+def Project_All(Delta, normalize=True):
+
+	# matrix for coefficients
+	coeffs = np.zeros((4, 4), dtype=complex)
+	
+	# loop over spin matrices
+	for idx,spin in zip( range(4), ['s0', 'sx', 'sy', 'sz']):
+	
+		# get spin matrix
+		S = basis_numpy[spin]
+		
+		# loop over orbital matrices
+		for jdx,orbital in zip( range(4), ['t0', 'tx', 'ty', 'tz']):
+
+			# get orbital matrix
+			O = basis_numpy[orbital]
+
+			# evaluate tensor product
+			Lambda_A = np.matrix( np.kron(S,O) )
+			
+			# get the projection
+			coeffs[idx,jdx] = np.trace(Lambda_A.H @ Delta) / np.trace(Lambda_A.H @ Lambda_A)
+
+	if normalize == True: coeffs /= np.linalg.norm(coeffs)
+	
+	return coeffs
+
+
+
+# function that reconstruct the pairing from the coefficients
+def Reconstruct(coeffs):
+
+	pairing = np.zeros((4,4),  dtype='complex')
+	
+	# loop over spin matrices
+	for idx,spin in zip( range(4), ['s0', 'sx', 'sy', 'sz']):
+	
+		# get spin matrix
+		S = basis_numpy[spin]
+		
+		# loop over orbital matrices
+		for jdx,orbital in zip( range(4), ['t0', 'tx', 'ty', 'tz']):
+
+			# get orbital matrix
+			O = basis_numpy[orbital]
+
+			# evaluate tensor product
+			Lambda_A = np.matrix( np.kron(S,O) )
+			
+			pairing += coeffs[idx,jdx] * Lambda_A
+	
+
+	return pairing
+
+
+
+'''
+M = np.kron(basis_numpy['sy'], basis_numpy['t0'])
+print(M)
+print()
+print(np.transpose(M))
+print()
+print(M==-np.transpose(M))
+'''
+
+
 
 
