@@ -55,6 +55,22 @@ basis = {
 }
 
 
+# define the basis for the projection
+basis = {
+    'uu': 1/2*(s0+sz),
+    'sym': sx/sqrt(2),
+    'asym': I*sy/sqrt(2),
+    'dd': 1/2*(s0-sz),
+    
+    '++': t0,
+    '+-': tx,
+    '-+': ty,
+    '--': tz
+}
+
+
+
+
 # convert basis into dictionary of numpy arrays
 basis_numpy = {
     'uu': np.matrix( basis['uu'].tolist(), dtype=complex ),
@@ -95,9 +111,9 @@ def Render_Projection(M: Matrix, spin: str, orbital: str):
     Lambda_A = kronecker_product(S,O)
     
     # get trace
-    tr = nsimplify(simplify( trace(Lambda_A.H*Lambda_A) ))
+    tr = nsimplify( trace(Lambda_A.H*Lambda_A) )
     # project
-    f_A = nsimplify(simplify( trace(Lambda_A.H * M) / trace(Lambda_A.H*Lambda_A) ))
+    f_A = nsimplify( trace(Lambda_A.H * M) / trace(Lambda_A.H*Lambda_A) )
     
     eq = rf"""
     \Lambda_A 
