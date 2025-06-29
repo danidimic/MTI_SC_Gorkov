@@ -41,6 +41,7 @@ ty = Matrix([[0,-I],[I,0]])
 tz = Matrix([[1,0],[0,-1]])
 
 
+'''
 # define the basis for the projection
 basis = {
     'uu': 1/2*(s0+sz),
@@ -53,6 +54,7 @@ basis = {
     '-+': 1/2*(tx-I*ty),
     '--': 1/2*(t0-tz)
 }
+'''
 
 
 # define the basis for the projection
