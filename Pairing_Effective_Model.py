@@ -4,7 +4,7 @@ import numpy as np
 from MTI_Second_Order import FMTI2_NeumannBC, FMTI2_Relative_Coordinates, FMTI2_Wigner_Transform, Change_Basis, Block_Decomposition, Block_Reverse
 
 from IPython.display import Math, display
-from sympy import Symbol, Matrix, I, init_printing, simplify, nsimplify, factor_terms, trace, latex, kronecker_product, sqrt
+from sympy import Symbol, Matrix, I, init_printing, simplify, nsimplify, factor_terms, trace, latex, kronecker_product, sqrt, cos, sin
 
 
 
@@ -41,35 +41,19 @@ ty = Matrix([[0,-I],[I,0]])
 tz = Matrix([[1,0],[0,-1]])
 
 
-'''
-# define the basis for the projection
-basis = {
-    'uu': 1/2*(s0+sz),
-    'sym': sx/sqrt(2),
-    'asym': I*sy/sqrt(2),
-    'dd': 1/2*(s0-sz),
-    
-    '++': 1/2*(t0+tz),
-    '+-': 1/2*(tx+I*ty),
-    '-+': 1/2*(tx-I*ty),
-    '--': 1/2*(t0-tz)
-}
-'''
-
 
 # define the basis for the projection
 basis = {
-    'uu': 1/2*(s0+sz),
-    'sym': sx/sqrt(2),
-    'asym': I*sy/sqrt(2),
-    'dd': 1/2*(s0-sz),
+    'uu': 1/2 * (s0+sz),
+    'sym': 1/sqrt(2) * sx,
+    'asym': I/sqrt(2) * sy,
+    'dd': 1/2 * (s0-sz),
     
-    '++': t0,
-    '+-': tx,
-    '-+': ty,
-    '--': tz
+    't0': t0,
+    'tx': tx,
+    'ty': ty,
+    'tz': tz
 }
-
 
 
 
@@ -80,10 +64,10 @@ basis_numpy = {
     'asym': np.matrix( basis['asym'].tolist(), dtype=complex ),
     'dd': np.matrix( basis['dd'].tolist(), dtype=complex ),
     
-    '++': np.matrix( basis['++'].tolist(), dtype=complex ),
-    '+-': np.matrix( basis['+-'].tolist(), dtype=complex ),
-    '-+': np.matrix( basis['-+'].tolist(), dtype=complex ),
-    '--': np.matrix( basis['--'].tolist(), dtype=complex )    
+    't0': np.matrix( basis['t0'].tolist(), dtype=complex ),
+    'tx': np.matrix( basis['tx'].tolist(), dtype=complex ),
+    'ty': np.matrix( basis['ty'].tolist(), dtype=complex ),
+    'tz': np.matrix( basis['tz'].tolist(), dtype=complex )    
 }
 
 
@@ -94,12 +78,17 @@ basis_latex = {
     'asym':  r"\frac{i}{\sqrt{2}} \sigma_y ",
     'dd':  r"\frac12 \left( \sigma_0 - \sigma_z \right) ",
     
-    '++':   r"\frac12 \left( \tau_0 + \tau_z \right) ",
-    '+-':   r"\frac12 \left( \tau_x + i \tau_y \right) ",
-    '-+':   r"\frac12 \left( \tau_x - i \tau_y \right) ",
-    '--':   r"\frac12 \left( \tau_0 - \tau_z \right) "
+    't0':   r"\tau_0",
+    'tx':   r"\tau_x",
+    'ty':   r"\tau_y",
+    'tz':   r"\tau_z"
 }
 
+
+
+#####################################################################
+###################### SIMBOLICAL CALCULATION #######################
+#####################################################################
 
 
 # function which render the projection over spin singlet and triplet basis in Latex
@@ -112,37 +101,16 @@ def Render_Projection(M: Matrix, spin: str, orbital: str):
     # evaluate tensor product
     Lambda_A = kronecker_product(S,O)
     
-    # get trace
-    tr = nsimplify( trace(Lambda_A.H*Lambda_A) )
     # project
     f_A = nsimplify( trace(Lambda_A.H * M) / trace(Lambda_A.H*Lambda_A) )
     
     eq = rf"""
-    \Lambda_A 
+    f_a 
     \;=\;
-    {basis_latex[spin]} \otimes {basis_latex[orbital]}
+    {latex(f_A)} 
     """
     display(Math(eq))
     
-    
-    # build & display MathJax
-    eq = rf"""
-    f_A(z)
-    \;=\;
-    \mathrm{{Tr}}\!\left[
-      \Lambda_A^\dagger \, 
-      \Delta_{{\mathrm{{ind}}}}(z)
-    \right]
-    \;=\;
-    {latex(f_A)} \,,
-    \qquad
-    \mathrm{{Tr}}\!\left[
-      \Lambda_A^\dagger \, \Lambda_A
-    \right]
-    \;=\;
-    {latex(tr)}
-    """
-    display(Math(eq))
     
 
 
@@ -154,9 +122,11 @@ def Render_Channel(spin: str, orbital: str):
     # get orbital matrix
     O = basis[orbital]
     # evaluate tensor product
-    Lambda_A = kronecker_product(S,O).applyfunc(nsimplify)
+    Lambda_A = (kronecker_product(S,O)).applyfunc(nsimplify)
     
     eq = rf"""
+    B_a 
+    \;=\;
     {basis_latex[spin]} \otimes {basis_latex[orbital]} 
     \;=\;
     {latex(Lambda_A)}
@@ -182,6 +152,12 @@ def Simpy_Projection(M: Matrix, spin: str, orbital: str):
 
 
 
+
+#####################################################################
+####################### NUMERICAL EVALUATION ########################
+#####################################################################
+
+
 # project the pairing F over one selected channel
 def Pairing_Projection(Delta, spin: str, orbital: str):
 
@@ -193,6 +169,8 @@ def Pairing_Projection(Delta, spin: str, orbital: str):
     Lambda_A = np.matrix( np.kron(S,O) )
     
     return np.trace(Lambda_A.H @ Delta) / np.trace(Lambda_A.H @ Lambda_A)
+
+
 
 
 
@@ -223,7 +201,7 @@ def Project_All(Delta, normalize=True):
 		S = basis_numpy[spin]
 		
 		# loop over orbital matrices
-		for jdx,orbital in zip( range(4), ['++', '+-', '-+', '--']):
+		for jdx,orbital in zip( range(4), ['t0', 'tx', 'ty', 'tz']):
 
 			# get orbital matrix
 			O = basis_numpy[orbital]
@@ -255,7 +233,7 @@ def Reconstruct(coeffs):
 		S = basis_numpy[spin]
 		
 		# loop over orbital matrices
-		for jdx,orbital in zip( range(4), ['++', '+-', '-+', '--']):
+		for jdx,orbital in zip( range(4), ['t0', 'tx', 'ty', 'tz']):
 
 			# get orbital matrix
 			O = basis_numpy[orbital]

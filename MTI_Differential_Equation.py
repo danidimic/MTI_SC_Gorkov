@@ -140,8 +140,17 @@ def psolution_Dirichlet(icol, d, Z, kx, ky, L, w, C = -0.0068, D1 = 1.3, D2 = 19
     # matrix A
     A = Amat_Dirichlet(d, Z, kx, ky, L, w, C=C, D1=D1, D2=D2, A1=A1, A2=A2, M=M, B1=B1, B2=B2, hbar=hbar)
 
-    return np.linalg.solve(A, y)
+    # singular matrix
+    if np.linalg.matrix_rank(A) < A.shape[0]:
+    
+    	x, residuals, rank, s = np.linalg.lstsq(A, y, rcond=None)
 
+    # non-singular matrix
+    else:
+        x = np.linalg.solve(A, y)
+    
+    return x
+    
 
 
 # Function evaluating the Green's function (Z=z', d=thickness)
@@ -228,7 +237,16 @@ def psolution_Neumann(icol, d, Z, kx, ky, L, w, C = -0.0068, D1 = 1.3, D2 = 19.6
     # matrix of equations
     A = Amat_Neumann(d, Z, kx, ky, L, w, C=C, D1=D1, D2=D2, A1=A1, A2=A2, M=M, B1=B1, B2=B2, hbar=hbar)
             
-    return np.linalg.solve(A, y)
+    # singular matrix
+    if np.linalg.matrix_rank(A) < A.shape[0]:
+    
+    	x, residuals, rank, s = np.linalg.lstsq(A, y, rcond=None)
+
+    # non-singular matrix
+    else:
+        x = np.linalg.solve(A, y)
+    
+    return x
 
 
 
@@ -328,8 +346,17 @@ def psolution_mixed(icol, d, Z, kx, ky, L, w, C = -0.0068, D1 = 1.3, D2 = 19.6, 
             
     # matrix of equations
     A = Amat_mixed(d, Z, kx, ky, L, w, C=C, D1=D1, D2=D2, A1=A1, A2=A2, M=M, B1=B1, B2=B2, hbar=hbar)
-            
-    return np.linalg.solve(A, y)
+    
+    # singular matrix
+    if np.linalg.matrix_rank(A) < A.shape[0]:
+    
+    	x, residuals, rank, s = np.linalg.lstsq(A, y, rcond=None)
+
+    # non-singular matrix
+    else:
+        x = np.linalg.solve(A, y)
+    
+    return x
 
 
 
